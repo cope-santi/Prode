@@ -6,6 +6,7 @@
 
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { calculatePoints, calculatePlayerStats, getPlayerStats } from "./calculations.js";
+import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./tournament-config.js";
 
 /**
  * Create and append player history modal to the DOM if it doesn't exist
@@ -75,7 +76,11 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
     try {
         // Fetch all predictions for this user
         const predictionsRef = collection(db, 'predictions');
-        const predQuery = query(predictionsRef, where('userId', '==', userId));
+        const predQuery = query(
+            predictionsRef,
+            where('userId', '==', userId),
+            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+        );
         const predSnapshot = await getDocs(predQuery);
 
         const userPredictions = [];
@@ -95,7 +100,11 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
 
         for (let i = 0; i < gameIds.length; i += 10) {
             const batch = gameIds.slice(i, i + 10);
-            const gamesQuery = query(collection(db, 'games'), where('__name__', 'in', batch));
+            const gamesQuery = query(
+                collection(db, 'games'),
+                where('__name__', 'in', batch),
+                where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+            );
             const gamesSnapshot = await getDocs(gamesQuery);
             gamesSnapshot.forEach(doc => {
                 const gameData = {
@@ -105,7 +114,10 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
                     status: (doc.data().Status || '').toLowerCase(),
                     homeScore: doc.data().HomeScore,
                     awayScore: doc.data().AwayScore,
-                    fecha: doc.data().Fecha
+                    stageKey: doc.data().StageKey,
+                    stage: doc.data().Stage,
+                    group: doc.data().Group,
+                    matchday: doc.data().Matchday
                 };
                 gamesArray.push(gameData);
                 gamesMap[doc.id] = gameData;
@@ -129,7 +141,10 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
 
         // Fetch ALL predictions to calculate if this user won any fechas
         const allPredictionsRef = collection(db, 'predictions');
-        const allPredSnapshot = await getDocs(allPredictionsRef);
+        const allPredSnapshot = await getDocs(query(
+            allPredictionsRef,
+            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+        ));
         const allPredictions = [];
         allPredSnapshot.forEach(doc => {
             const pred = doc.data();
@@ -162,7 +177,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
         html += '</div>';
         html += '<div style="text-align: center;">';
         html += `<div style="font-size: 1.8rem; font-weight: 700; color: #ffeb3b;">${playerStats.fechasWonCount}</div>`;
-        html += '<div style="font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Fechas Won</div>';
+        html += '<div style="font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Phases Won</div>';
         html += '</div>';
         html += '</div>';
         html += '</div>';
@@ -178,17 +193,18 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             const pointsDisplay = points === null ? 'N/A' : `${points}p`;
 
             const gameDate = new Date(game.KickOffTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const phaseLabel = resolveStageLabel(game);
 
             html += `
                 <div class="prediction-entry">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; color: #f0f0f0;">${game.HomeTeam} vs ${game.AwayTeam}</div>
                         <div style="font-size: 0.85rem; color: #9e9e9e; margin-top: 4px;">
-                            <span>Predicted: ${pred.predictedHomeScore} - ${pred.predictedAwayScore}</span>
+                            <span>Phase: ${phaseLabel}</span>
+                            <span style="margin-left: 8px;">Predicted: ${pred.predictedHomeScore} - ${pred.predictedAwayScore}</span>
                             ${game.Status === 'finished' && game.HomeScore !== null ? ` | Actual: ${game.HomeScore} - ${game.AwayScore}` : ''}
                             <span style="margin-left: 8px; font-size: 0.75rem;">${gameDate}</span>
                         </div>
-                        ${game.Fecha ? `<div style="font-size: 0.75rem; color: #7e8a99; margin-top: 2px;">Fecha: ${game.Fecha}</div>` : ''}
                     </div>
                     <span class="score ${pointsClass}">${pointsDisplay}</span>
                 </div>
@@ -221,7 +237,7 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
                 <th scope="col">#</th>
                 <th scope="col">Player</th>
                 <th scope="col">Total Points</th>
-                <th scope="col" class="text-center">Fechas Won</th>
+                <th scope="col" class="text-center">Phases Won</th>
                 <th scope="col" class="text-center">Perfect Scores (10s)</th>
             </tr>
         </thead>
@@ -280,14 +296,14 @@ export function setupPlayerClickHandlers(callback) {
 }
 
 /**
- * Create a game week selector UI component with isolated namespace
- * @param {array} gameWeeksList - Array of game week strings (e.g., ['GW1', 'GW2'])
- * @param {function} onSelectGameWeek - Callback function when a game week is selected
+ * Create a phase selector UI component with isolated namespace
+ * @param {array} phaseKeys - Array of phase keys (e.g., ['GROUP-A-MD1', 'R16'])
+ * @param {function} onSelectPhase - Callback function when a phase is selected
  * @param {string} containerId - ID of the container where buttons will be rendered
- * @param {string} selectedGameWeek - Currently selected game week (optional)
- * @param {string} callbackNamespace - Optional namespace to avoid conflicts (default: 'gameWeekCallback')
+ * @param {string} selectedPhase - Currently selected phase (optional)
+ * @param {string} callbackNamespace - Optional namespace to avoid conflicts (default: 'phaseCallback')
  */
-export function createGameWeekSelector(gameWeeksList, onSelectGameWeek, containerId, selectedGameWeek = null, callbackNamespace = 'gameWeekCallback') {
+export function createPhaseSelector(phaseKeys, onSelectPhase, containerId, selectedPhase = null, callbackNamespace = 'phaseCallback', getPhaseLabel = null) {
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container with ID "${containerId}" not found.`);
@@ -295,53 +311,53 @@ export function createGameWeekSelector(gameWeeksList, onSelectGameWeek, containe
     }
 
     // Create a unique namespace for this selector to avoid conflicts
-    if (!window.gameWeekSelectors) {
-        window.gameWeekSelectors = {};
+    if (!window.phaseSelectors) {
+        window.phaseSelectors = {};
     }
-    window.gameWeekSelectors[callbackNamespace] = onSelectGameWeek;
+    window.phaseSelectors[callbackNamespace] = onSelectPhase;
 
-    container.innerHTML = gameWeeksList.map(gw => `
-        <button class="btn btn-outline-secondary gameweek-button" 
-                onclick="window.gameWeekSelectors['${callbackNamespace}']('${gw}')" 
-                data-gameweek="${gw}">
-            ${gw}
+    container.innerHTML = phaseKeys.map(phaseKey => `
+        <button class="btn btn-outline-secondary phase-button" 
+                onclick="window.phaseSelectors['${callbackNamespace}']('${phaseKey}')" 
+                data-phase="${phaseKey}">
+            ${getPhaseLabel ? getPhaseLabel(phaseKey) : phaseKey}
         </button>
     `).join('');
 
-    // Apply active state to the selected game week
-    if (selectedGameWeek) {
-        updateGameWeekSelectorState(containerId, selectedGameWeek);
+    // Apply active state to the selected phase
+    if (selectedPhase) {
+        updatePhaseSelectorState(containerId, selectedPhase);
     }
 }
 
 /**
- * Update game week selector active state
- * @param {string} containerId - ID of the container with game week buttons
- * @param {string} selectedGameWeek - Game week to mark as active
+ * Update phase selector active state
+ * @param {string} containerId - ID of the container with phase buttons
+ * @param {string} selectedPhase - Phase to mark as active
  */
-export function updateGameWeekSelectorState(containerId, selectedGameWeek) {
+export function updatePhaseSelectorState(containerId, selectedPhase) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const buttons = container.querySelectorAll('.gameweek-button');
+    const buttons = container.querySelectorAll('.phase-button');
     buttons.forEach(btn => {
         btn.classList.remove('active');
-        if (btn.getAttribute('data-gameweek') === selectedGameWeek) {
+        if (btn.getAttribute('data-phase') === selectedPhase) {
             btn.classList.add('active');
         }
     });
 }
 
 /**
- * Filter predictions by game week
+ * Filter predictions by phase
  * @param {array} predictions - Array of prediction objects with gameId
  * @param {Map} gamesMap - Map of gameId to game objects
- * @param {string} gameWeek - Game week to filter by (e.g., 'GW1')
- * @returns {array} - Filtered predictions for the specified game week
+ * @param {string} phaseKey - Phase key to filter by (e.g., 'GROUP-A-MD1')
+ * @returns {array} - Filtered predictions for the specified phase
  */
-export function filterPredictionsByGameWeek(predictions, gamesMap, gameWeek) {
+export function filterPredictionsByPhase(predictions, gamesMap, phaseKey) {
     return predictions.filter(pred => {
         const game = gamesMap.get(pred.gameId);
-        return game && game.Fecha === gameWeek;
+        return game && resolveStageKey(game) === phaseKey;
     });
 }

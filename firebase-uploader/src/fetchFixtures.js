@@ -9,6 +9,8 @@
  *   const fixtures = await searchFixture('Barcelona', 'Real Madrid');
  */
 
+import { TOURNAMENT_CONFIG } from '../../js/tournament-config.js';
+
 // TheSportsDB API Configuration
 const THESPORTSDB_API_KEY = '123'; // Your free API key from TheSportsDB
 const THESPORTSDB_BASE_URL = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_API_KEY}`;
@@ -153,12 +155,26 @@ function mapEventToFirestoreFormat(event) {
         AwayTeam: event.strAwayTeam || 'Unknown',
         KickOffTime: formatDateToISO(event.dateEvent),
         Status: 'upcoming',
-        League: normalizeLeague(event.strLeague) || 'Other',
+        League: TOURNAMENT_CONFIG.displayName,
         thesportsdbEventId: event.idEvent,
         HomeScore: null,
         AwayScore: null,
-        Fecha: null,
+        Stage: null,
+        Group: null,
+        Matchday: null,
+        StageKey: null,
+        tournamentId: TOURNAMENT_CONFIG.tournamentId
     };
+}
+
+function isWorldCupEvent(event) {
+    if (!event) return false;
+    if (TOURNAMENT_CONFIG.theSportsDbLeagueId && event.idLeague) {
+        return event.idLeague === TOURNAMENT_CONFIG.theSportsDbLeagueId;
+    }
+    const normalizedLeague = normalizeLeague(event.strLeague);
+    if (!normalizedLeague) return false;
+    return normalizedLeague.toLowerCase().includes('world cup');
 }
 
 /**
@@ -210,6 +226,7 @@ export async function searchFixture(homeTeamName, awayTeamName) {
                 eventIds.add(event.idEvent);
                 return new Date(event.dateEvent) > now;
             })
+            .filter(event => isWorldCupEvent(event))
             .map(event => mapEventToFirestoreFormat(event))
             .sort((a, b) => new Date(a.KickOffTime) - new Date(b.KickOffTime))
             .slice(0, 5);

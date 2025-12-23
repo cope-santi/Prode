@@ -1,3 +1,5 @@
+import { buildStageKey } from './tournament-config.js';
+
 /**
  * EA Predictor - Standardized Calculations Module
  * 
@@ -77,7 +79,7 @@ function calculatePoints(prediction, game) {
 
 /**
  * Calculates all player statistics from predictions and games
- * Properly handles Fechas Won by comparing all players' scores per fecha
+ * Properly handles phase wins by comparing all players' scores per phase
  * 
  * @param {Array} games - Array of game objects with id, status, homeScore, awayScore, fecha
  * @param {Array} predictions - Array of prediction objects
@@ -85,13 +87,13 @@ function calculatePoints(prediction, game) {
  * 
  * Player stats include:
  * - totalPoints: Sum of all points across all games
- * - fechasWonCount: Number of game weeks won (where player had highest score vs others)
+ * - fechasWonCount: Number of phases won (where player had highest score vs others)
  * - perfectScoresCount: Number of 10-point predictions
  * - gamesParticipated: Number of games with predictions
  */
 function calculatePlayerStats(games, predictions) {
   const playerStats = {}; // { userId: { totalPoints, fechasWonCount, perfectScoresCount, gamesParticipated } }
-  const fechaScores = {}; // { fecha: { userId: totalScore } } - ALL players' scores per fecha
+  const stageScores = {}; // { stageKey: { userId: totalScore } } - ALL players' scores per phase
   const gameMap = {}; // Create map for faster game lookup
 
   // Build game map - normalize to lowercase status and fields
@@ -137,30 +139,34 @@ function calculatePlayerStats(games, predictions) {
         }
 
         // Track fecha scores for all players
-        const fecha = game.Fecha || game.fecha;
-        if (fecha) {
-          if (!fechaScores[fecha]) {
-            fechaScores[fecha] = {};
+        const stageKey = game.StageKey || game.stageKey || buildStageKey({
+          stage: game.Stage || game.stage,
+          group: game.Group || game.group,
+          matchday: game.Matchday || game.matchday
+        });
+        if (stageKey) {
+          if (!stageScores[stageKey]) {
+            stageScores[stageKey] = {};
           }
-          if (!fechaScores[fecha][userId]) {
-            fechaScores[fecha][userId] = 0;
+          if (!stageScores[stageKey][userId]) {
+            stageScores[stageKey][userId] = 0;
           }
-          fechaScores[fecha][userId] += points;
+          stageScores[stageKey][userId] += points;
         }
       }
     }
   });
 
-  // Calculate fecha wins - where player had HIGHEST score in that fecha
-  Object.keys(fechaScores).forEach(fecha => {
-    const playersInFecha = fechaScores[fecha];
-    const scores = Object.values(playersInFecha);
+  // Calculate phase wins - where player had HIGHEST score in that phase
+  Object.keys(stageScores).forEach(stageKey => {
+    const playersInPhase = stageScores[stageKey];
+    const scores = Object.values(playersInPhase);
 
     if (scores.length > 0) {
       const maxScore = Math.max(...scores);
       // All players tied for max score in a fecha get credited with a win
-      Object.keys(playersInFecha).forEach(userId => {
-        if (playersInFecha[userId] === maxScore) {
+      Object.keys(playersInPhase).forEach(userId => {
+        if (playersInPhase[userId] === maxScore) {
           playerStats[userId].fechasWonCount += 1;
         }
       });
@@ -279,7 +285,7 @@ function sortPlayersByStats(playerStats, predictions) {
       if (statsB.totalPoints !== statsA.totalPoints) {
         return statsB.totalPoints - statsA.totalPoints;
       }
-      // Secondary: Fechas Won
+      // Secondary: Phases Won
       if (statsB.fechasWonCount !== statsA.fechasWonCount) {
         return statsB.fechasWonCount - statsA.fechasWonCount;
       }
@@ -331,7 +337,10 @@ function normalizeGame(firestoreGame) {
     awayScore: firestoreGame.AwayScore !== null ? firestoreGame.AwayScore : null,
     status: firestoreGame.Status?.toLowerCase?.() || 'upcoming',
     kickOffTime: kickOffTime.toISOString(),
-    fecha: firestoreGame.Fecha,
+    stage: firestoreGame.Stage,
+    group: firestoreGame.Group,
+    matchday: firestoreGame.Matchday,
+    stageKey: firestoreGame.StageKey,
     league: firestoreGame.League,
     // Keep original fields for backward compatibility
     HomeTeam: firestoreGame.HomeTeam,
@@ -340,7 +349,10 @@ function normalizeGame(firestoreGame) {
     AwayScore: firestoreGame.AwayScore,
     Status: firestoreGame.Status,
     KickOffTime: firestoreGame.KickOffTime,
-    Fecha: firestoreGame.Fecha,
+    Stage: firestoreGame.Stage,
+    Group: firestoreGame.Group,
+    Matchday: firestoreGame.Matchday,
+    StageKey: firestoreGame.StageKey,
     League: firestoreGame.League
   };
 }

@@ -12,14 +12,17 @@
  *   await initializeAdminPanel(db, auth, ADMIN_UID);
  */
 
+import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage } from './tournament-config.js';
+
 // Admin DOM References
 let adminGameFormSection;
 let adminHomeTeamInput;
 let adminAwayTeamInput;
-let adminLeagueSelect;
+let adminStageSelect;
+let adminGroupSelect;
+let adminMatchdaySelect;
 let adminKickOffTimeInput;
 let adminStatusSelect;
-let adminFechaInput;
 let adminHomeScoreInput;
 let adminAwayScoreInput;
 let addGameButton;
@@ -58,10 +61,11 @@ export function initializeAdminPanel(database, addDoc, collection) {
     adminGameFormSection = document.getElementById('admin-game-form-section');
     adminHomeTeamInput = document.getElementById('adminHomeTeam');
     adminAwayTeamInput = document.getElementById('adminAwayTeam');
-    adminLeagueSelect = document.getElementById('adminLeague');
+    adminStageSelect = document.getElementById('adminStage');
+    adminGroupSelect = document.getElementById('adminGroup');
+    adminMatchdaySelect = document.getElementById('adminMatchday');
     adminKickOffTimeInput = document.getElementById('adminKickOffTime');
     adminStatusSelect = document.getElementById('adminStatus');
-    adminFechaInput = document.getElementById('adminFecha');
     adminHomeScoreInput = document.getElementById('adminHomeScore');
     adminAwayScoreInput = document.getElementById('adminAwayScore');
     addGameButton = document.getElementById('addGameButton');
@@ -82,6 +86,9 @@ export function initializeAdminPanel(database, addDoc, collection) {
     }
     if (addGameButton) {
         addGameButton.addEventListener('click', handleAdminGameAdd);
+    }
+    if (adminStageSelect) {
+        adminStageSelect.addEventListener('change', updateGroupMatchdayInputs);
     }
 }
 
@@ -110,24 +117,19 @@ export async function handleAdminGameAdd() {
 
     const homeTeam = adminHomeTeamInput.value.trim();
     const awayTeam = adminAwayTeamInput.value.trim();
-    const league = adminLeagueSelect.value;
+    const stage = adminStageSelect.value;
+    const group = adminGroupSelect.value || null;
+    const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
     const status = adminStatusSelect.value;
-    const fecha = adminFechaInput.value.trim();
     const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
     const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
     const thesportsdbEventId = adminThesportsdbEventId.value || null;
 
     // Basic validation
-    if (!homeTeam || !awayTeam || !league || !kickOffTimeStr || !status) {
-        gameMessageDiv.textContent = 'Please fill in all required fields (Teams, League, Kick-off Time, Status).';
+    if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
+        gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
         gameMessageDiv.style.color = 'red';
-        addGameButton.disabled = false;
-        return;
-    }
-    if (!fecha) {
-        gameMessageDiv.textContent = '⚠️ Please enter the Fecha (Game Week) - e.g., GW1, GW2, etc.';
-        gameMessageDiv.style.color = 'orange';
         addGameButton.disabled = false;
         return;
     }
@@ -136,6 +138,14 @@ export async function handleAdminGameAdd() {
         gameMessageDiv.style.color = 'red';
         addGameButton.disabled = false;
         return;
+    }
+    if (isGroupStage(stage)) {
+        if (!group || !matchday) {
+            gameMessageDiv.textContent = 'Please select a Group and Matchday for Group Stage matches.';
+            gameMessageDiv.style.color = 'orange';
+            addGameButton.disabled = false;
+            return;
+        }
     }
 
     try {
@@ -147,13 +157,18 @@ export async function handleAdminGameAdd() {
             return;
         }
 
+        const stageKey = buildStageKey({ stage, group, matchday });
         const gameData = {
+            tournamentId: TOURNAMENT_CONFIG.tournamentId,
             HomeTeam: homeTeam,
             AwayTeam: awayTeam,
             KickOffTime: kickOffTime.toISOString(),
-            League: league,
             Status: status,
-            Fecha: fecha,
+            Stage: stage,
+            Group: group,
+            Matchday: matchday,
+            StageKey: stageKey,
+            League: TOURNAMENT_CONFIG.displayName
         };
 
         // Add thesportsdbEventId if available
@@ -237,7 +252,7 @@ export async function handleFixtureSearch() {
                 <div class="text-center">
                     <strong>${fixture.HomeTeam} vs ${fixture.AwayTeam}</strong><br>
                     <small>${new Date(fixture.KickOffTime).toLocaleString()}</small><br>
-                    <small class="text-muted">${fixture.League}</small>
+                    <small class="text-muted">${TOURNAMENT_CONFIG.displayName}</small>
                 </div>
             `;
             fixtureButton.addEventListener('click', () => selectFixture(fixture));
@@ -263,7 +278,9 @@ export async function handleFixtureSearch() {
 export function selectFixture(fixture) {
     adminHomeTeamInput.value = fixture.HomeTeam;
     adminAwayTeamInput.value = fixture.AwayTeam;
-    adminLeagueSelect.value = fixture.League;
+    if (adminStageSelect) {
+        adminStageSelect.value = 'GROUP';
+    }
     
     // Convert ISO string to datetime-local format
     const date = new Date(fixture.KickOffTime);
@@ -290,9 +307,16 @@ export function selectFixture(fixture) {
 function clearAdminForm() {
     adminHomeTeamInput.value = "";
     adminAwayTeamInput.value = "";
-    adminLeagueSelect.value = "";
     adminStatusSelect.value = "upcoming";
-    adminFechaInput.value = '';
+    if (adminStageSelect) {
+        adminStageSelect.value = "";
+    }
+    if (adminGroupSelect) {
+        adminGroupSelect.value = "";
+    }
+    if (adminMatchdaySelect) {
+        adminMatchdaySelect.value = "";
+    }
     adminHomeScoreInput.value = "";
     adminAwayScoreInput.value = "";
     adminThesportsdbEventId.value = "";
@@ -301,50 +325,74 @@ function clearAdminForm() {
     fixtureResults.style.display = 'none';
 }
 
+function updateGroupMatchdayInputs() {
+    if (!adminStageSelect || !adminGroupSelect || !adminMatchdaySelect) return;
+
+    const stage = adminStageSelect.value;
+    const isGroup = isGroupStage(stage);
+
+    adminGroupSelect.disabled = !isGroup;
+    adminMatchdaySelect.disabled = !isGroup;
+
+    if (!isGroup) {
+        adminGroupSelect.value = "";
+        adminMatchdaySelect.value = "";
+    }
+}
+
 /**
- * Populate admin dropdowns from Firestore data
- * Uses global allLeagues variable from index.html
+ * Populate admin dropdowns for tournament stages and groups
  */
 export async function populateAdminDropdowns() {
     try {
-        // Populate league dropdown
-        if (!adminLeagueSelect) {
-            console.warn('adminLeagueSelect not found - form may not be initialized yet');
-            if (adminMessageDiv) {
-                adminMessageDiv.textContent = 'Admin form elements not initialized.';
-                adminMessageDiv.style.color = 'orange';
-            }
+        if (!adminStageSelect || !adminGroupSelect || !adminMatchdaySelect) {
+            console.warn('Admin stage inputs not found - form may not be initialized yet');
             return;
         }
 
-        adminLeagueSelect.innerHTML = '';
-        const defaultLeagueOption = document.createElement('option');
-        defaultLeagueOption.value = "";
-        defaultLeagueOption.textContent = "Select league";
-        defaultLeagueOption.disabled = true;
-        defaultLeagueOption.selected = true;
-        adminLeagueSelect.appendChild(defaultLeagueOption);
+        adminStageSelect.innerHTML = '';
+        const defaultStageOption = document.createElement('option');
+        defaultStageOption.value = "";
+        defaultStageOption.textContent = "Select stage";
+        defaultStageOption.disabled = true;
+        defaultStageOption.selected = true;
+        adminStageSelect.appendChild(defaultStageOption);
 
-        const desiredLeagues = [
-            "Premier League",
-            "La Liga",
-            "Bundesliga",
-            "Serie A",
-            "Ligue 1",
-            "Champions League",
-            "Europa League",
-            "Conmebol",
-            "World Cup",
-            "Copa America",
-            "Eurocopa",
-            "International Friendlies"
-        ];
-
-        desiredLeagues.forEach(leagueName => {
+        TOURNAMENT_CONFIG.stages.forEach(stage => {
             const option = document.createElement('option');
-            option.value = leagueName;
-            option.textContent = leagueName;
-            adminLeagueSelect.appendChild(option);
+            option.value = stage.id;
+            option.textContent = stage.label;
+            adminStageSelect.appendChild(option);
+        });
+
+        adminGroupSelect.innerHTML = '';
+        const defaultGroupOption = document.createElement('option');
+        defaultGroupOption.value = "";
+        defaultGroupOption.textContent = "Select group";
+        defaultGroupOption.disabled = true;
+        defaultGroupOption.selected = true;
+        adminGroupSelect.appendChild(defaultGroupOption);
+
+        TOURNAMENT_CONFIG.groups.forEach(groupName => {
+            const option = document.createElement('option');
+            option.value = groupName;
+            option.textContent = `Group ${groupName}`;
+            adminGroupSelect.appendChild(option);
+        });
+
+        adminMatchdaySelect.innerHTML = '';
+        const defaultMatchdayOption = document.createElement('option');
+        defaultMatchdayOption.value = "";
+        defaultMatchdayOption.textContent = "Select matchday";
+        defaultMatchdayOption.disabled = true;
+        defaultMatchdayOption.selected = true;
+        adminMatchdaySelect.appendChild(defaultMatchdayOption);
+
+        TOURNAMENT_CONFIG.matchdays.forEach(matchday => {
+            const option = document.createElement('option');
+            option.value = matchday;
+            option.textContent = `Matchday ${matchday}`;
+            adminMatchdaySelect.appendChild(option);
         });
 
         // Set default kick-off time
@@ -355,6 +403,7 @@ export async function populateAdminDropdowns() {
             adminKickOffTimeInput.value = isoString;
         }
 
+        updateGroupMatchdayInputs();
         console.log('Admin dropdowns populated successfully');
 
     } catch (error) {
@@ -372,16 +421,16 @@ export async function populateAdminDropdowns() {
  * @param {array} leagues - Array of league objects or names
  */
 export function populateLeagueDropdown(leagues) {
-    if (!adminLeagueSelect) return;
+    if (!adminStageSelect) return;
     
-    adminLeagueSelect.innerHTML = '<option value="">Select League</option>';
+    adminStageSelect.innerHTML = '<option value="">Select Stage</option>';
     if (Array.isArray(leagues)) {
         leagues.forEach(league => {
             const leagueName = typeof league === 'string' ? league : league.name || league;
             const option = document.createElement('option');
             option.value = leagueName;
             option.textContent = leagueName;
-            adminLeagueSelect.appendChild(option);
+            adminStageSelect.appendChild(option);
         });
     }
 }

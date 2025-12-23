@@ -139,12 +139,13 @@ p.text-muted {
    Game Results Summary Matrix Styles
    =================================== */
 
-/* Gameweek Selector */
+/* Phase Selector */
 .gameweek-selector {
     margin-bottom: 30px;
 }
 
-.gameweek-button {
+.gameweek-button,
+.phase-button {
     margin: 5px;
     font-weight: 600;
     background-color: var(--color-bg-dark);
@@ -156,12 +157,14 @@ p.text-muted {
     transition: all 0.3s ease;
 }
 
-.gameweek-button:hover {
+.gameweek-button:hover,
+.phase-button:hover {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
 }
 
-.gameweek-button.active {
+.gameweek-button.active,
+.phase-button.active {
     background-color: var(--color-primary) !important;
     border-color: var(--color-primary) !important;
     color: white !important;

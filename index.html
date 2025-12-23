@@ -43,7 +43,7 @@
                         <a class="nav-link" href="leaderboard.html">Leaderboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="game_weeks.html">Points</a>
+                        <a class="nav-link" href="game_weeks.html">Fases</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="fixtures.html">Fixtures</a>
@@ -76,7 +76,7 @@
                     <div class="my-3 py-3">
                         <img class="img-profile" src="css/images/EA-logo.png" alt="profile">
                         <h1 class="fw-bold">Eliminatorias Anónimas</h1>
-                        <p>-- Torneos de Fútbol --</p>
+                        <p>-- Mundial 2026 --</p>
                     </div>
                 </div>
 
@@ -133,11 +133,11 @@
 
             <hr class="my-5"> 
             
-            <div id="my-predictions-section" class="prediction-section" style="display: none;"> <h2 class="section-heading">My Submitted Predictions</h2>
-                <!-- Game Week Selector for My Predictions -->
-                <div id="my-predictions-gameweek-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-                    <h5 class="mb-3">Filter by Game Week:</h5>
-                    <div id="my-predictions-gameweek-buttons"></div>
+            <div id="my-predictions-section" class="prediction-section" style="display: none;"> <h2 class="section-heading">My World Cup 2026 Predictions</h2>
+                <!-- Phase Selector for My Predictions -->
+                <div id="my-predictions-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
+                    <h5 class="mb-3">Filter by Phase:</h5>
+                    <div id="my-predictions-phase-buttons"></div>
                 </div>
                 <div id="my-predictions-list" class="game-list">
                     <p class="text-center">No predictions submitted yet.</p>
@@ -225,6 +225,7 @@
         import { getAuth, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
         
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -238,7 +239,6 @@
         let currentUserId = null; // To store the authenticated user's ID
         let currentUserEmail = null; // To store the authenticated user's email
         let allTeams = [];
-        let allLeagues = [];
 
         // --- UI Element References ---
         const playerNameInput = document.getElementById('playerName');
@@ -424,7 +424,11 @@
                 });
 
                 const gamesRef = collection(db, 'games');
-                const q = query(gamesRef, orderBy('KickOffTime', 'asc'));
+                const q = query(
+                    gamesRef,
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('KickOffTime', 'asc')
+                );
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
@@ -439,6 +443,7 @@
                 snapshot.forEach(doc => {
                     const game = doc.data();
                     const gameId = doc.id;
+                    const stageLabel = resolveStageLabel(game);
 
                     const homeTeamLogo = teamLogoMap.get(game.HomeTeam) || 'path/to/default_logo.png';
                     const awayTeamLogo = teamLogoMap.get(game.AwayTeam) || 'path/to/default_logo.png';
@@ -460,7 +465,7 @@
                                     <span class="team-name">${game.AwayTeam}</span>
                                 </div>    
                             </div>
-                            <p class="game-detail-line"><strong>Fecha:</strong> ${game.Fecha || 'N/A'}</p>       
+                            <p class="game-detail-line"><strong>Phase:</strong> ${stageLabel}</p>       
                             <div class="prediction-inputs">
                                 <input type="number" data-game-id="${gameId}" data-team="home" placeholder="H" min="0" class="score-input">
                                 <span class="score-separator">-</span>
@@ -541,7 +546,8 @@
                         const existingPredictionsQuery = query(
                             predictionsRef,
                             where('userId', '==', currentUserId),
-                            where('gameId', '==', gameId)
+                            where('gameId', '==', gameId),
+                            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                         );
                         const existingPredictionsSnapshot = await getDocs(existingPredictionsQuery);
 
@@ -551,6 +557,7 @@
                             gameId: gameId,
                             predictedHomeScore: prediction.predictedHomeScore,
                             predictedAwayScore: prediction.predictedAwayScore,
+                            tournamentId: TOURNAMENT_CONFIG.tournamentId,
                             timestamp: new Date() // Update timestamp on every submission
                         };
 
@@ -595,8 +602,8 @@
         // Global variables for My Predictions filtering
         let allUserPredictions = [];
         let gamesMapForPredictions = new Map();
-        let selectedMyPredictionsGameWeek = null;
-        const myPredictionsGameweekSelector = document.getElementById('my-predictions-gameweek-selector');
+        let selectedMyPredictionsPhase = null;
+        const myPredictionsPhaseSelector = document.getElementById('my-predictions-phase-selector');
 
         async function loadMyPredictions() {
             if (!currentUserId) {
@@ -608,12 +615,17 @@
 
             try {
                 const myPredictionsRef = collection(db, 'predictions');
-                const q = query(myPredictionsRef, where('userId', '==', currentUserId), orderBy('timestamp', 'desc'));
+                const q = query(
+                    myPredictionsRef,
+                    where('userId', '==', currentUserId),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('timestamp', 'desc')
+                );
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
                     myPredictionsList.innerHTML = '<p class="text-center">You have not submitted any predictions yet.</p>';
-                    myPredictionsGameweekSelector.style.display = 'none';
+                    myPredictionsPhaseSelector.style.display = 'none';
                     return;
                 }
 
@@ -625,52 +637,50 @@
 
                 // Fetch all game data once
                 gamesMapForPredictions = new Map();
-                const gamesSnapshot = await getDocs(collection(db, 'games'));
+                const gamesSnapshot = await getDocs(query(
+                    collection(db, 'games'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                ));
                 gamesSnapshot.forEach(doc => {
                     gamesMapForPredictions.set(doc.id, doc.data());
                 });
 
-                // Extract unique game weeks from user's predictions
-                const gameWeeksSet = new Set();
+                // Extract unique phases from user's predictions
+                const phaseSet = new Set();
                 allUserPredictions.forEach(pred => {
                     const game = gamesMapForPredictions.get(pred.gameId);
-                    if (game && game.Fecha) {
-                        gameWeeksSet.add(game.Fecha);
+                    const stageKey = game ? resolveStageKey(game) : null;
+                    if (stageKey) {
+                        phaseSet.add(stageKey);
                     }
                 });
 
-                const gameWeeksList = Array.from(gameWeeksSet).sort((a, b) => {
-                    const numA = parseInt(a.replace('GW', ''));
-                    const numB = parseInt(b.replace('GW', ''));
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                    }
-                    return a.localeCompare(b);
-                });
+                const phaseList = sortStageKeys(Array.from(phaseSet));
 
-                // Show game week selector only if there are multiple weeks
-                if (gameWeeksList.length > 1) {
-                    myPredictionsGameweekSelector.style.display = 'block';
-                    // Select the latest game week by default
-                    selectedMyPredictionsGameWeek = gameWeeksList[gameWeeksList.length - 1];
+                // Show phase selector only if there are multiple phases
+                if (phaseList.length > 1) {
+                    myPredictionsPhaseSelector.style.display = 'block';
+                    // Select the latest phase by default
+                    selectedMyPredictionsPhase = phaseList[phaseList.length - 1];
                     
                     // Import the helper functions
-                    const { createGameWeekSelector, updateGameWeekSelectorState } = await import('./js/ui-helpers.js');
+                    const { createPhaseSelector, updatePhaseSelectorState } = await import('./js/ui-helpers.js');
                     
-                    createGameWeekSelector(
-                        gameWeeksList,
-                        (gameWeek) => {
-                            selectedMyPredictionsGameWeek = gameWeek;
-                            updateGameWeekSelectorState('my-predictions-gameweek-buttons', gameWeek);
+                    createPhaseSelector(
+                        phaseList,
+                        (phaseKey) => {
+                            selectedMyPredictionsPhase = phaseKey;
+                            updatePhaseSelectorState('my-predictions-phase-buttons', phaseKey);
                             displayFilteredMyPredictions();
                         },
-                        'my-predictions-gameweek-buttons',
-                        gameWeeksList[gameWeeksList.length - 1],
-                        'myPredictionsGameWeekSelector'
+                        'my-predictions-phase-buttons',
+                        phaseList[phaseList.length - 1],
+                        'myPredictionsPhaseSelector',
+                        (phaseKey) => resolveStageLabel({ StageKey: phaseKey })
                     );
-                } else if (gameWeeksList.length === 1) {
-                    myPredictionsGameweekSelector.style.display = 'none';
-                    selectedMyPredictionsGameWeek = gameWeeksList[0];
+                } else if (phaseList.length === 1) {
+                    myPredictionsPhaseSelector.style.display = 'none';
+                    selectedMyPredictionsPhase = phaseList[0];
                 }
 
                 displayFilteredMyPredictions();
@@ -681,17 +691,17 @@
             }
         }
 
-        // Display filtered My Predictions based on selected game week
+        // Display filtered My Predictions based on selected phase
         function displayFilteredMyPredictions() {
-            const filteredPredictions = selectedMyPredictionsGameWeek
+            const filteredPredictions = selectedMyPredictionsPhase
                 ? allUserPredictions.filter(pred => {
                     const game = gamesMapForPredictions.get(pred.gameId);
-                    return game && game.Fecha === selectedMyPredictionsGameWeek;
+                    return game && resolveStageKey(game) === selectedMyPredictionsPhase;
                 })
                 : allUserPredictions;
 
             if (filteredPredictions.length === 0) {
-                myPredictionsList.innerHTML = '<p class="text-center">No predictions for this game week.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center">No predictions for this phase.</p>';
                 return;
             }
 
@@ -707,8 +717,11 @@
 
                     const predictionTime = prediction.timestamp ? new Date(prediction.timestamp.toDate()).toLocaleString() : 'N/A';
 
+                    const phaseLabel = resolveStageLabel(game);
+
                     predictionCard.innerHTML = `
                         <h3>${game.HomeTeam} vs ${game.AwayTeam}</h3>
+                        <p><strong>Phase:</strong> ${phaseLabel}</p>
                         <p><strong>Your Prediction:</strong> ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</p>
                         <p><strong>Game Status:</strong> <span class="status ${game.Status ? game.Status.toLowerCase() : ''}">${game.Status || 'N/A'}</span></p>
                         ${game.Status && game.Status.toLowerCase() === 'finished' ? `<p><strong>Actual Result:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}

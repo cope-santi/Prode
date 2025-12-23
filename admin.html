@@ -39,7 +39,7 @@
                         <a class="nav-link" href="leaderboard.html">Leaderboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="game_weeks.html">Game Weeks</a>
+                        <a class="nav-link" href="game_weeks.html">Fases</a>
                     </li>
                 </ul>
             </div>
@@ -93,7 +93,7 @@
 
                 <!-- Admin Game Form Section -->
                 <div id="admin-game-form-section" style="display: none;">
-                    <h2 class="mb-4">Add New Game</h2>
+                    <h2 class="mb-4">Add World Cup 2026 Match</h2>
 
                     <!-- Fixture Search Section -->
                     <div class="fixture-search-section mb-4 p-3 bg-light rounded">
@@ -137,14 +137,23 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="adminLeague">League:</label>
-                                <select id="adminLeague" class="form-control"></select>
+                                <label for="adminStage">Stage:</label>
+                                <select id="adminStage" class="form-control"></select>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="adminFecha">Fecha (Game Week):</label>
-                                <input type="text" id="adminFecha" class="form-control" placeholder="e.g., GW1, GW2">
+                                <label for="adminGroup">Group (A-L):</label>
+                                <select id="adminGroup" class="form-control"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="adminMatchday">Matchday (1-3):</label>
+                                <select id="adminMatchday" class="form-control"></select>
                             </div>
                         </div>
                     </div>
@@ -239,18 +248,16 @@
         let currentUserId = null;
         let currentUserEmail = null;
         let allTeams = [];
-        let allLeagues = [];
-
         // ADMIN_UID - Must match the value in index.html
         const ADMIN_UID = 'NGUEFdFJB8cKZdSU6MHojOSzlkA2'; // Same UID as in index.html
 
         /**
-         * Initialize admin dropdowns - Fetch teams and leagues from Firestore
+         * Initialize admin dropdowns - Fetch teams from Firestore
          */
         async function initializeAdminDropdowns() {
             console.log("initializeAdminDropdowns called");
             try {
-                // Fetch Teams and Leagues from Firestore
+                // Fetch Teams from Firestore
                 const teamsRef = collection(db, 'teams');
                 const teamsSnapshot = await getDocs(query(teamsRef, orderBy('name')));
                 allTeams = [];
@@ -258,14 +265,6 @@
                     allTeams.push({ id: doc.id, ...doc.data() });
                 });
                 console.log("Fetched teams from Firestore:", allTeams.map(t => t.name));
-
-                const leaguesRef = collection(db, 'nationalLeagues');
-                const leaguesSnapshot = await getDocs(query(leaguesRef, orderBy('name')));
-                allLeagues = [];
-                leaguesSnapshot.forEach(doc => {
-                    allLeagues.push({ id: doc.id, ...doc.data() });
-                });
-                console.log("Fetched leagues from Firestore:", allLeagues.map(l => l.name));
 
                 // Call module function to populate dropdowns
                 try {

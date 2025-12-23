@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaderboard - EA Predictor</title>
+    <title>Leaderboard - FIFA World Cup 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
@@ -11,7 +11,7 @@
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">EA Predictor</a>
+        <a class="navbar-brand" href="index.html">World Cup 2026</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -24,7 +24,7 @@
                     <a class="nav-link" href="leaderboard.html">Leaderboard <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="game_weeks.html">Points</a>
+                    <a class="nav-link" href="game_weeks.html">Fases</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="fixtures.html">Fixtures</a>
@@ -34,7 +34,7 @@
     </nav>
 
     <div class="container py-4">
-        <h1 class="text-center mb-5">Player Leaderboard & Game Results</h1>
+        <h1 class="text-center mb-5">World Cup 2026 Leaderboard & Results</h1>
 
         <div id="overall-leaderboard-container" class="game-results-card mb-5" style="display: none;">
             <h2 class="text-center mb-4">Overall Player Standings</h2>
@@ -67,10 +67,11 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { calculatePoints, calculatePlayerStats } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { renderLeaderboardTable, createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
+        import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -98,7 +99,11 @@
 
             try {
                 // 1. Fetch all games
-                const gamesSnapshot = await getDocs(query(collection(db, 'games'), orderBy('KickOffTime', 'desc')));
+                const gamesSnapshot = await getDocs(query(
+                    collection(db, 'games'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('KickOffTime', 'desc')
+                ));
                 const games = [];
                 const gamesById = {};
                 
@@ -109,7 +114,11 @@
                 });
 
                 // 2. Fetch all predictions
-                const predictionsSnapshot = await getDocs(query(collection(db, 'predictions'), orderBy('timestamp', 'desc')));
+                const predictionsSnapshot = await getDocs(query(
+                    collection(db, 'predictions'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('timestamp', 'desc')
+                ));
                 const predictions = [];
                 
                 predictionsSnapshot.forEach(doc => {
@@ -194,13 +203,14 @@
                             : '<p class="text-muted">No predictions submitted for this game yet.</p>'
                         : '<p class="text-muted">Predictions are hidden until the game is finished.</p>';
 
+                    const phaseLabel = resolveStageLabel(game);
+
                     gameCard.innerHTML = `
                         <h3 class="game-header">
                             ${game.HomeTeam} vs ${game.AwayTeam}
                             <span class="game-status ${game.Status}">${game.Status.toUpperCase()}</span>
                         </h3>
-                        <p class="game-info">${game.League} - ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</p>
-                        ${game.Fecha ? `<p class="game-info">Fecha: ${game.Fecha}</p>` : ''}
+                        <p class="game-info">${phaseLabel} - ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</p>
                         ${actualResultDisplay}
                         <hr>
                         <h4 class="mb-3">All Predictions:</h4>

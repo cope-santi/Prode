@@ -16,13 +16,14 @@
 }
 
 /* ===================================
-   Game Week Selector (from styles_final.css)
+   Phase Selector (from styles_final.css)
    =================================== */
 .gameweek-selector {
     margin-bottom: 30px;
 }
 
-.gameweek-button {
+.gameweek-button,
+.phase-button {
     margin: 5px;
     font-weight: 600;
     background-color: #1a1d26;
@@ -34,12 +35,14 @@
     transition: all 0.3s ease;
 }
 
-.gameweek-button:hover {
+.gameweek-button:hover,
+.phase-button:hover {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
 }
 
-.gameweek-button.active {
+.gameweek-button.active,
+.phase-button.active {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
     color: white !important;
