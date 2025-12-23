@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixtures - EA Predictor</title>
+    <title>Fixtures - FIFA World Cup 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
 </head>
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">EA Predictor</a>
+        <a class="navbar-brand" href="index.html">World Cup 2026</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -23,7 +23,7 @@
                     <a class="nav-link" href="leaderboard.html">Leaderboard</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="game_weeks.html">Points</a>
+                    <a class="nav-link" href="game_weeks.html">Fases</a>
                 </li>
                 <li class="nav-item active">
                     <a class="nav-link" href="fixtures.html">Fixtures <span class="sr-only">(current)</span></a>
@@ -33,13 +33,13 @@
     </nav>
 
     <div class="container py-4">
-        <h1 class="text-center mb-4">Upcoming & Recent Games</h1>
+        <h1 class="text-center mb-4">FIFA World Cup 2026 Fixtures</h1>
         <p class="text-center text-muted mb-4">View all upcoming fixtures and results</p>
 
-        <!-- Game Week Selector -->
-        <div id="fixtures-gameweek-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-            <h5 class="mb-3">Filter by Game Week:</h5>
-            <div id="fixtures-gameweek-buttons"></div>
+        <!-- Phase Selector -->
+        <div id="fixtures-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
+            <h5 class="mb-3">Filter by Phase:</h5>
+            <div id="fixtures-phase-buttons"></div>
         </div>
 
         <!-- Games List -->
@@ -53,21 +53,21 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { firebaseConfig } from "./js/firebase-config.js";
-        import { createGameWeekSelector, updateGameWeekSelectorState } from "./js/ui-helpers.js";
+        import { createPhaseSelector, updatePhaseSelectorState } from "./js/ui-helpers.js";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         // State
         let allGames = [];
-        let selectedGameWeek = null;
+        let selectedPhase = null;
         let allTeams = {};
 
         const gameListDiv = document.getElementById('game-list');
-        const fixturesGameweekSelector = document.getElementById('fixtures-gameweek-selector');
-        const fixturesGameweekButtons = document.getElementById('fixtures-gameweek-buttons');
+        const fixturesPhaseSelector = document.getElementById('fixtures-phase-selector');
 
         // Load teams first
         async function loadTeams() {
@@ -89,7 +89,11 @@
 
             try {
                 const gamesRef = collection(db, 'games');
-                const q = query(gamesRef, orderBy('KickOffTime', 'asc'));
+                const q = query(
+                    gamesRef,
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('KickOffTime', 'asc')
+                );
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
@@ -103,43 +107,38 @@
                     allGames.push(doc.data());
                 });
 
-                // Extract unique game weeks
-                const gameWeeksSet = new Set();
+                // Extract unique phases
+                const phaseSet = new Set();
                 allGames.forEach(game => {
-                    if (game.Fecha) {
-                        gameWeeksSet.add(game.Fecha);
+                    const stageKey = resolveStageKey(game);
+                    if (stageKey) {
+                        phaseSet.add(stageKey);
                     }
                 });
 
-                const gameWeeksList = Array.from(gameWeeksSet).sort((a, b) => {
-                    const numA = parseInt(a.replace('GW', ''));
-                    const numB = parseInt(b.replace('GW', ''));
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                    }
-                    return a.localeCompare(b);
-                });
+                const phaseList = sortStageKeys(Array.from(phaseSet));
 
-                // Show selector if multiple weeks
-                if (gameWeeksList.length > 1) {
-                    fixturesGameweekSelector.style.display = 'block';
-                    // Select the latest game week by default
-                    selectedGameWeek = gameWeeksList[gameWeeksList.length - 1];
+                // Show selector if multiple phases
+                if (phaseList.length > 1) {
+                    fixturesPhaseSelector.style.display = 'block';
+                    // Select the latest phase by default
+                    selectedPhase = phaseList[phaseList.length - 1];
                     
-                    createGameWeekSelector(
-                        gameWeeksList,
-                        (gameWeek) => {
-                            selectedGameWeek = gameWeek;
-                            updateGameWeekSelectorState('fixtures-gameweek-buttons', gameWeek);
+                    createPhaseSelector(
+                        phaseList,
+                        (phaseKey) => {
+                            selectedPhase = phaseKey;
+                            updatePhaseSelectorState('fixtures-phase-buttons', phaseKey);
                             displayFilteredGames();
                         },
-                        'fixtures-gameweek-buttons',
-                        gameWeeksList[gameWeeksList.length - 1],
-                        'fixturesGameWeekSelector'
+                        'fixtures-phase-buttons',
+                        phaseList[phaseList.length - 1],
+                        'fixturesPhaseSelector',
+                        (phaseKey) => resolveStageLabel({ StageKey: phaseKey })
                     );
-                } else if (gameWeeksList.length === 1) {
-                    fixturesGameweekSelector.style.display = 'none';
-                    selectedGameWeek = gameWeeksList[0];
+                } else if (phaseList.length === 1) {
+                    fixturesPhaseSelector.style.display = 'none';
+                    selectedPhase = phaseList[0];
                 }
 
                 displayFilteredGames();
@@ -152,12 +151,12 @@
 
         // Display filtered games
         function displayFilteredGames() {
-            const filteredGames = selectedGameWeek
-                ? allGames.filter(game => game.Fecha === selectedGameWeek)
+            const filteredGames = selectedPhase
+                ? allGames.filter(game => resolveStageKey(game) === selectedPhase)
                 : allGames;
 
             if (filteredGames.length === 0) {
-                gameListDiv.innerHTML = '<p class="text-center">No games for this week.</p>';
+                gameListDiv.innerHTML = '<p class="text-center">No games for this phase.</p>';
                 return;
             }
 
@@ -177,6 +176,8 @@
                     scoreDisplay = `<p><strong>Result:</strong> ${homeScore} - ${awayScore}</p>`;
                 }
 
+                const phaseLabel = resolveStageLabel(game);
+
                 const gameCard = document.createElement('div');
                 gameCard.classList.add('app-card', 'game-card');
 
@@ -192,8 +193,7 @@
                             <p class="team-name">${game.AwayTeam}</p>
                         </div>
                     </div>
-                    <p><strong>League:</strong> ${game.League || 'N/A'}</p>
-                    <p><strong>Fecha:</strong> ${game.Fecha || 'N/A'}</p> 
+                    <p><strong>Phase:</strong> ${phaseLabel}</p> 
                     <p><strong>Kick-off:</strong> ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }) || 'N/A'}</p>
                     <p><strong>Status:</strong> <span class="status ${statusClass}">${game.Status || 'N/A'}</span></p>
                     ${scoreDisplay}

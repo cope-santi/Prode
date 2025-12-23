@@ -12,8 +12,8 @@ A modern, modular web application for predicting football match outcomes, tracki
     * Correct home team goals
     * Correct away team goals
     * Correct goal difference
-* **Leaderboard**: A comprehensive, real-time leaderboard tracks player standings by total points, weekly wins (Fechas Won), and perfect scores.
-* **Game Weeks Matrix**: Compare all players' scores across games by game week with toggle for predictions visualization.
+* **Leaderboard**: A comprehensive, real-time leaderboard tracks player standings by total points, phase wins, and perfect scores.
+* **Phase Matrix**: Compare all players' scores across matches by tournament phase with toggle for predictions visualization.
 * **Player History Modal**: Click any player name to view their complete prediction history with stats.
 * **Responsive Design**: Built with Bootstrap and custom CSS for a clean, mobile-friendly dark interface.
 
@@ -27,7 +27,7 @@ A modern, modular web application for predicting football match outcomes, tracki
 **Pages:**
 - `index.html` - Home page with navigation
 - `leaderboard.html` - Overall player standings with clickable player history
-- `game_weeks.html` - Game week matrix view comparing player scores
+- `game_weeks.html` - Phase matrix view comparing player scores
 - `crearCuenta.html` - Account creation page
 
 **Styling:**
@@ -68,6 +68,23 @@ The application is deployed on **Firebase Hosting**:
 
 4.  **Open in Browser**:
     Navigate to `http://localhost:8000` and explore!
+
+#### 🏆 Cómo cargar datos del Mundial 2026
+
+1. **Configurar torneo único**:
+   * Verifica `js/tournament-config.js` (tournamentId `FIFA2026`, displayName `FIFA World Cup 2026`, stages y grupos A–L).
+2. **Cargar equipos**:
+   * En la colección `teams` de Firestore, guarda solo selecciones nacionales y sus logos (campo `name` y `logoUrl`).
+3. **Cargar partidos**:
+   * En la colección `games`, cada documento debe incluir:
+     * `tournamentId: "FIFA2026"`
+     * `Stage` (`GROUP`, `R32`, `R16`, `QF`, `SF`, `3P`, `FINAL`)
+     * `Group` (A–L) y `Matchday` (1–3) **solo** para fase de grupos
+     * `StageKey` (`GROUP-A-MD1` o `R16`, etc.)
+     * `KickOffTime`, `HomeTeam`, `AwayTeam`, `Status`, `HomeScore`, `AwayScore`
+4. **Cargar fixtures desde TheSportsDB** (opcional):
+   * El buscador de fixtures filtra por “World Cup” si TheSportsDB devuelve el torneo.
+   * Revisa que `theSportsDbLeagueId` en `js/tournament-config.js` esté definido si usas ID de liga.
 
 ## 🔒 Security Notes
 
@@ -117,11 +134,12 @@ The scoring system is centralized in `js/calculations.js` and calculates points 
 EA-app/
 ├── index.html                 # Home page
 ├── leaderboard.html          # Player leaderboard
-├── game_weeks.html           # Game weeks matrix view
+├── game_weeks.html           # Phase matrix view
 ├── crearCuenta.html          # Account creation
 ├── js/
 │   ├── firebase-config.js    # Firebase configuration
 │   ├── calculations.js       # Scoring logic
+│   ├── tournament-config.js  # World Cup 2026 configuration
 │   └── ui-helpers.js         # Shared UI components
 ├── css/
 │   ├── styles_final.css      # Main consolidated styles
@@ -189,7 +207,7 @@ firebase open hosting:site
 #### 📝 Notes for Developers
 
 - **Player IDs**: Uses Firebase UID instead of player names for reliable data tracking
-- **Fechas Won**: Calculates by comparing each player's score against ALL players' scores for that week
+- **Phases Won**: Calculates by comparing each player's score against ALL players' scores for that phase
 - **Firebase Modules**: Uses ES Module imports (modern approach, requires local server)
 - **Data Normalization**: `calculations.js` handles both `HomeScore`/`homeScore` property names
 

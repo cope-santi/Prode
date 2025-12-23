@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Weeks - EA Predictor</title>
+    <title>Fases - FIFA World Cup 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
 </head>
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">EA Predictor</a>
+        <a class="navbar-brand" href="index.html">World Cup 2026</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -23,7 +23,7 @@
                     <a class="nav-link" href="leaderboard.html">Leaderboard</a>
                 </li>
                 <li class="nav-item active">
-                    <a class="nav-link" href="game_weeks.html">Points <span class="sr-only">(current)</span></a>
+                    <a class="nav-link" href="game_weeks.html">Fases <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="fixtures.html">Fixtures</a>
@@ -33,13 +33,13 @@
     </nav>
 
     <div class="container-fluid py-4">
-        <h1 class="text-center mb-4">Game Weeks</h1>
-        <p class="text-center text-muted mb-4">Compare all players' scores across games by game week</p>
+        <h1 class="text-center mb-4">Fases del Mundial 2026</h1>
+        <p class="text-center text-muted mb-4">Compare all players' scores across games by phase</p>
 
-        <!-- Game Week Selector -->
+        <!-- Phase Selector -->
         <div class="gameweek-selector text-center">
-            <div id="gameweek-buttons">
-                <p class="text-muted">Loading game weeks...</p>
+            <div id="phase-buttons">
+                <p class="text-muted">Loading phases...</p>
             </div>
         </div>
 
@@ -91,13 +91,14 @@
         import { calculatePoints, calculatePlayerStats, getPlayerStats, getScoreClass } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         // Store user display names globally
         let userDisplayNamesGlobal = {};
-        // Store overall player stats (totalPoints across all game weeks)
+        // Store overall player stats (totalPoints across all phases)
         let overallPlayerStats = {};
 
         // Create player history modal on page load
@@ -110,43 +111,41 @@
 
         // Cloud Function URLs (commented out - using direct Firestore queries instead)
         // const CLOUD_FUNCTION_URL = {
-        //     getGameWeekResults: 'http://localhost:5001/ea-football-predictor/us-central1/get_gameweek_results'
+        //     getPhaseResults: 'http://localhost:5001/ea-football-predictor/us-central1/get_phase_results'
         // };
 
         // UI Elements
-        const gameweekButtonsContainer = document.getElementById('gameweek-buttons');
+        const phaseButtonsContainer = document.getElementById('phase-buttons');
         const matrixContainer = document.getElementById('matrix-container');
         const legendContainer = document.getElementById('legend-container');
 
         // State
-        let selectedGameWeek = null;
-        let gameWeeksList = [];
+        let selectedPhase = null;
+        let phaseList = [];
         let showPredictions = false;
         let allTeams = {};
         let currentMatrixGames = null;
         let currentMatrixPredictions = null;
 
-        // Load available game weeks
-        async function loadGameWeeks() {
+        // Load available phases
+        async function loadPhases() {
             try {
-                const gamesSnapshot = await getDocs(query(collection(db, 'games'), orderBy('KickOffTime', 'asc')));
-                const gameWeekSet = new Set();
+                const gamesSnapshot = await getDocs(query(
+                    collection(db, 'games'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    orderBy('KickOffTime', 'asc')
+                ));
+                const phaseSet = new Set();
                 
                 gamesSnapshot.forEach(doc => {
                     const game = doc.data();
-                    if (game.Fecha) {
-                        gameWeekSet.add(game.Fecha);
+                    const stageKey = resolveStageKey(game);
+                    if (stageKey) {
+                        phaseSet.add(stageKey);
                     }
                 });
 
-                gameWeeksList = Array.from(gameWeekSet).sort((a, b) => {
-                    const numA = parseInt(a.replace('GW', ''));
-                    const numB = parseInt(b.replace('GW', ''));
-                    if (!isNaN(numA) && !isNaN(numB)) {
-                        return numA - numB;
-                    }
-                    return a.localeCompare(b);
-                });
+                phaseList = sortStageKeys(Array.from(phaseSet));
 
                 // Load team logos
                 const teamsSnapshot = await getDocs(collection(db, 'teams'));
@@ -158,17 +157,17 @@
                 // Load overall player stats from ALL games
                 await loadOverallPlayerStats(gamesSnapshot);
 
-                if (gameWeeksList.length === 0) {
-                    matrixContainer.innerHTML = '<p class="empty-message">No game weeks found.</p>';
+                if (phaseList.length === 0) {
+                    matrixContainer.innerHTML = '<p class="empty-message">No phases found.</p>';
                     return;
                 }
 
-                renderGameWeekButtons();
-                selectGameWeek(gameWeeksList[gameWeeksList.length - 1]);
+                renderPhaseButtons();
+                selectPhase(phaseList[phaseList.length - 1]);
 
             } catch (error) {
-                console.error("Error loading game weeks: ", error);
-                matrixContainer.innerHTML = '<p class="empty-message" style="color: red;">Error loading game weeks. Please try again later.</p>';
+                console.error("Error loading phases: ", error);
+                matrixContainer.innerHTML = '<p class="empty-message" style="color: red;">Error loading phases. Please try again later.</p>';
             }
         }
 
@@ -182,10 +181,13 @@
                     allGames.push(gameData);
                 });
 
-                // Fetch ALL predictions
+                // Fetch ALL predictions for the tournament
                 const predictionsRef = collection(db, 'predictions');
                 const allPredictions = [];
-                const predSnapshot = await getDocs(predictionsRef);
+                const predSnapshot = await getDocs(query(
+                    predictionsRef,
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                ));
                 predSnapshot.forEach(doc => {
                     allPredictions.push(doc.data());
                 });
@@ -198,30 +200,30 @@
             }
         }
 
-        function renderGameWeekButtons() {
-            gameweekButtonsContainer.innerHTML = gameWeeksList.map(gw => `
-                <button class="btn btn-outline-secondary gameweek-button" onclick="window.selectGameWeek('${gw}')">
-                    ${gw}
+        function renderPhaseButtons() {
+            phaseButtonsContainer.innerHTML = phaseList.map(phaseKey => `
+                <button class="btn btn-outline-secondary phase-button" data-phase="${phaseKey}" onclick="window.selectPhase('${phaseKey}')">
+                    ${resolveStageLabel({ StageKey: phaseKey })}
                 </button>
             `).join('');
         }
 
-        // Make selectGameWeek available globally
-        window.selectGameWeek = selectGameWeek;
+        // Make selectPhase available globally
+        window.selectPhase = selectPhase;
 
-        function selectGameWeek(gameWeek) {
-            selectedGameWeek = gameWeek;
+        function selectPhase(phaseKey) {
+            selectedPhase = phaseKey;
 
             // Update active button
-            document.querySelectorAll('.gameweek-button').forEach(btn => {
+            document.querySelectorAll('.phase-button').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.textContent.trim() === gameWeek) {
+                if (btn.getAttribute('data-phase') === phaseKey) {
                     btn.classList.add('active');
                 }
             });
 
             // Load data from Cloud Function
-            loadGameWeekResults();
+            loadPhaseResults();
         }
 
         window.togglePredictions = function() {
@@ -233,7 +235,7 @@
             }
         };
 
-        // Check if any games in current game week have started (not upcoming)
+        // Check if any games in current phase have started (not upcoming)
         function hasStartedGames(games) {
             return games && games.some(game => game.status !== 'upcoming');
         }
@@ -245,15 +247,16 @@
         }
 
         // Fetch results (currently local calculation, will use Cloud Function in production)
-        async function loadGameWeekResults() {
-            matrixContainer.innerHTML = '<p class="loading-message">Loading game week data...</p>';
+        async function loadPhaseResults() {
+            matrixContainer.innerHTML = '<p class="loading-message">Loading phase data...</p>';
             
             try {
-                // Fetch games for this game week (without orderBy to avoid needing composite index)
+                // Fetch games for this phase (without orderBy to avoid needing composite index)
                 const gamesRef = collection(db, 'games');
                 const gamesQuery = query(
                     gamesRef,
-                    where('Fecha', '==', selectedGameWeek)
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                    where('StageKey', '==', selectedPhase)
                 );
                 
                 const gamesSnapshot = await getDocs(gamesQuery);
@@ -275,7 +278,7 @@
                 });
 
                 if (games.length === 0) {
-                    matrixContainer.innerHTML = '<p class="empty-message">No games found for this game week.</p>';
+                    matrixContainer.innerHTML = '<p class="empty-message">No games found for this phase.</p>';
                     legendContainer.style.display = 'none';
                     return;
                 }
@@ -287,7 +290,11 @@
                 const allPredictions = [];
                 for (let i = 0; i < gameIds.length; i += 10) {
                     const batch = gameIds.slice(i, i + 10);
-                    const predQuery = query(predictionsRef, where('gameId', 'in', batch));
+                    const predQuery = query(
+                        predictionsRef,
+                        where('gameId', 'in', batch),
+                        where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                    );
                     const predSnapshot = await getDocs(predQuery);
                     predSnapshot.forEach(doc => {
                         allPredictions.push(doc.data());
@@ -332,8 +339,7 @@
                     homeScore: game.HomeScore,
                     awayScore: game.AwayScore,
                     status: game.Status,
-                    kickOffTime: game.KickOffTime,
-                    league: game.League
+                    kickOffTime: game.KickOffTime
                 }));
 
                 // Store data for re-rendering when toggle predictions is clicked
@@ -356,7 +362,7 @@
                 renderMatrixWithData(gamesFormatted, predictionsWithScores);
 
             } catch (error) {
-                console.error("Error loading game week results: ", error);
+                console.error("Error loading phase results: ", error);
                 matrixContainer.innerHTML = `<p class="empty-message" style="color: red;">Error loading results: ${error.message}</p>`;
             }
         }
@@ -375,7 +381,7 @@
                 };
             });
 
-            // Get unique players and sort by Total GW (sum of points for current game week) in descending order
+            // Get unique players and sort by Total Phase (sum of points for current phase) in descending order
             const players = Object.keys(matrixData).sort((userIdA, userIdB) => {
                 let totalA = 0;
                 let totalB = 0;
@@ -426,7 +432,7 @@
                                         </th>
                                     `;
                                 }).join('')}
-                                <th>Total GW</th>
+                                <th>Total Phase</th>
                                 <th>Total All</th>
                             </tr>
                         </thead>
@@ -496,7 +502,7 @@
         }
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', loadGameWeeks);
+        document.addEventListener('DOMContentLoaded', loadPhases);
     </script>
 
 </body>
