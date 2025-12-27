@@ -1,216 +1,85 @@
-# EA Football Predictor
+# Prode Mundial 2026
 
-A modern, modular web application for predicting football match outcomes, tracking results, and managing a community leaderboard. Built with vanilla JavaScript ES modules, Firebase backend, and a responsive dark-themed UI.
+Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Firebase como backend único.
 
-#### ⚽️ Features
+## Funcionalidades
 
-* **User Authentication**: Secure sign-up and sign-in functionality using Firebase Authentication.
-* **Match Predictions**: Users can submit their predicted scores for upcoming football matches.
-* **Live Updates**: Match information, including results and statuses (Upcoming, Live, Finished), are loaded dynamically.
-* **Scoring System**: A detailed, centralized scoring logic calculates points based on:
-    * Correct outcome (win, loss, or draw)
-    * Correct home team goals
-    * Correct away team goals
-    * Correct goal difference
-* **Leaderboard**: A comprehensive, real-time leaderboard tracks player standings by total points, phase wins, and perfect scores.
-* **Phase Matrix**: Compare all players' scores across matches by tournament phase with toggle for predictions visualization.
-* **Player History Modal**: Click any player name to view their complete prediction history with stats.
-* **Responsive Design**: Built with Bootstrap and custom CSS for a clean, mobile-friendly dark interface.
+* **Autenticación segura** con Firebase Auth (email/contraseña) antes de subir predicciones.
+* **Carga de predicciones** para cada partido del Mundial y validación inmediata de puntajes en Firestore.
+* **Visualización de fases** (grupos, octavos, cuartos, semis, tercer puesto y final) vía matrix y filtros de fase.
+* **Leaderboard centralizado** con puntos totales, fases ganadas y predicciones perfectas; clic para abrir historial detallado.
+* **Modal de historial** con predicciones + estadísticas calculadas a partir de todos los jugadores.
+* **Dashboard de admin** (solo para el UID configurado) para añadir/actualizar partidos del Mundial 2026.
 
-#### 🏗️ Architecture
+## Arquitectura
 
-**Modular JavaScript Structure:**
-- `js/firebase-config.js` - Centralized Firebase configuration
-- `js/calculations.js` - Centralized scoring logic with data normalization
-- `js/ui-helpers.js` - Shared UI components (modals, leaderboard rendering, event delegation)
+* `index.html` – landing principal con lista de partidos, formulario de predicción y vista del usuario autenticado.
+* `leaderboard.html` – tabla ordenada y modal para revisar la historia de cada jugador.
+* `game_weeks.html` – matriz por fase con colores según puntaje y toggle para mostrar predicciones tras el inicio.
+* `fixtures.html` – listado de juegos filtrable por fase (mantiene orden cronológico en cliente).
+* `js/firebase-config.js` – única fuente de la configuración Firebase del proyecto actual.
+* `js/tournament-config.js` – define `tournamentId: "FIFA2026"` y los nombres/etapas del Mundial.
+* `js/calculations.js` – lógica compartida de puntajes, estadísticas y normalización centrada en los campos definitivos.
+* `js/ui-helpers.js` – modales, tablas y selectores reutilizados por las vistas.
+* `js/admin-panel.js` – manejo del formulario del administrador con validaciones y envíos a Firestore.
 
-**Pages:**
-- `index.html` - Home page with navigation
-- `leaderboard.html` - Overall player standings with clickable player history
-- `game_weeks.html` - Phase matrix view comparing player scores
-- `crearCuenta.html` - Account creation page
+## Firebase (Firestore + Auth)
 
-**Styling:**
-- `css/styles_final.css` - Consolidated stylesheet (dark theme with teal accents)
-- `css/styles2.css` - Legacy styles (retained for compatibility)
-- `css/icon/favicon-ball.ico` - Favicon
+1. Crea un nuevo proyecto en [console.firebase.google.com](https://console.firebase.google.com/).
+2. Habilita **Firestore** (modo producción o test según tu preferencia) y crea las colecciones descritas más abajo.
+3. Activa **Firebase Authentication** con el proveedor Email/Password.
+4. Copia la configuración (apiKey, projectId, etc.) en `js/firebase-config.js`.
+5. Ajusta las reglas para permitir lecturas de `games` y `predictions` a usuarios autenticados (o con reglas más abiertas si querés leaderboard público).
+6. Opcional: habilita Firebase Hosting y despliega con `firebase deploy --only hosting`.
 
-**Firebase:**
-- `firebase.json` - Firebase configuration
-- `.firebaserc` - Firebase project reference
-- `firebase-uploader/` - Cloud Storage logo upload utility
+### Índices recomendados
 
-#### 🚀 Live Deployment
+* `games` – índice compuesto `tournamentId` + `KickOffTime` (para orden cronológico + filtrado único).
+* `predictions` – índice compuesto `tournamentId` + `timestamp` (ayuda a ordenar la historia de cada usuario).
 
-The application is deployed on **Firebase Hosting**:
-**🔗 https://ea-football-predictor.web.app**
+## Esquema mínimo de Firestore
 
-#### 🚀 How to Run Locally
+### `games`
 
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/josedanielcl18/EA-app.git
-    cd EA-app
-    ```
+* `HomeTeam` (string)
+* `AwayTeam` (string)
+* `HomeScore`, `AwayScore` (number o `null`)
+* `Status` (`upcoming` | `live` | `finished`)
+* `KickOffTime` (ISO string)
+* `Stage` (`GROUP`, `R32`, `R16`, `QF`, `SF`, `3P`, `FINAL`)
+* `Group` (A–L, solo para fase de grupos)
+* `Matchday` (1–3, solo para fase de grupos)
+* `StageKey` (`GROUP-A-MD1`, `R16`, etc.)
+* `tournamentId: "FIFA2026"`
 
-2.  **Set up Firebase**:
-    This application requires a Firebase project to store game data and user predictions.
-    * Create a new project on the [Firebase Console](https://console.firebase.google.com/).
-    * Enable **Firestore Database** and **Firebase Authentication** (with Email/Password sign-in).
-    * Find your project's configuration details and update `js/firebase-config.js` with your credentials.
+### `predictions`
 
-3.  **Run a Local Server**:
-    To properly load the Firebase module imports and other local files, run a local web server:
-    ```bash
-    python3 -m http.server
-    ```
-    Alternatively, use `npx serve` or any other local server.
+* `userId` (Firebase UID)
+* `playerName` (cadena)
+* `gameId` (referencia indirecta al doc de `games`)
+* `predictedHomeScore`, `predictedAwayScore`
+* `timestamp` (Fecha, se usa para ordenar el historial)
+* `tournamentId: "FIFA2026"`
 
-4.  **Open in Browser**:
-    Navigate to `http://localhost:8000` and explore!
+### `teams` (opcional)
 
-#### 🏆 Datos fijos para Mundial 2026 (Firestore)
+* `name` (string)
+* `logoUrl` (string) – usado en `fixtures.html`, `game_weeks.html` e `index.html`.
 
-1. **Torneo único**: `js/tournament-config.js` ya fija `tournamentId: "FIFA2026"` y `displayName: "FIFA World Cup 2026"`.
-2. **Colección games** (documentos auto-ID):
-   * `tournamentId: "FIFA2026"`
-   * `Stage` (`GROUP`, `R32`, `R16`, `QF`, `SF`, `3P`, `FINAL`)
-   * `Group` (A–L) y `Matchday` (1–3) solo para grupos
-   * `StageKey` precomputado (`GROUP-A-MD1`, `R16`, etc.)
-   * `KickOffTime` (ISO string), `HomeTeam`, `AwayTeam`, `Status` (`upcoming`/`live`/`finished`), `HomeScore`, `AwayScore`
-3. **Colección predictions**:
-   * `userId`, `playerName`, `gameId`, `predictedHomeScore`, `predictedAwayScore`, `timestamp`, `tournamentId: "FIFA2026"`
-4. **Colección teams** (opcional, solo para logos):
-   * `name`, `logoUrl`
-5. **Índices recomendados** (Firestore):
-   * `games`: `tournamentId` + `KickOffTime`
-   * `predictions`: `tournamentId` + `timestamp`
+### `users` (opcional)
 
-## 🔒 Security Notes
+* Documentos de perfil si necesitás guardar status extra, aunque hoy todas las referencias usan sólo `userId`.
 
-This repository previously contained exposed Firebase service account credentials. These have been:
-- ✅ Removed from the repository
-- ✅ Added to `.gitignore`
-- ✅ Rotated in the Firebase Console
+## Cómo correr en local
 
-**Best Practices Applied:**
-- Credentials are never committed to version control
-- Firebase config is separated into `js/firebase-config.js`
-- Service account keys stored locally only (not in repo)
-- Sensitive files protected via `.gitignore`
+1. Abre terminal y ejecuta `python -m http.server` o `npx serve`.
+2. Accede por `http://localhost:8000/index.html` (o la página deseada) usando un navegador moderno con soporte ES Modules.
+3. Activa Firebase Auth en la app desde el panel de login; el administrador debe tener el UID definido en `admin.html`/`index.html`.
 
-To run the logo uploader locally (if needed):
-1. Create a local `firebase-uploader/serviceAccountKey.json` (not committed)
-2. Run: `cd firebase-uploader && npm install && node uploadLogos.js`
+## Despliegue
 
-#### 🛠️ Technologies Used
+1. Instala Firebase CLI (`npm install -g firebase-tools`) si no lo tenés.
+2. Logueate (`firebase login`) y selecciona el proyecto correcto (`firebase use`).
+3. Despliega con `firebase deploy --only hosting`.
 
-* **Front-end**: HTML5, CSS3, JavaScript ES6+ (ES Modules)
-* **Frameworks**: Bootstrap 4.5.2
-* **Backend**: Firebase (Firestore, Authentication, Hosting)
-* **Development**: Git, Node.js (optional, for firebase-cli)
-
-#### 📊 Scoring Algorithm
-
-The scoring system is centralized in `js/calculations.js` and calculates points as follows:
-
-| Prediction Accuracy | Points |
-|---|---|
-| Perfect (all 4 elements correct) | 10 |
-| Correct outcome + 1 goal | 7-9 |
-| Correct outcome only | 4-6 |
-| Partial match (1 goal) | 1-3 |
-| Incorrect | 0 |
-
-**Elements checked:**
-1. Match outcome (Win/Draw/Loss)
-2. Home team goals
-3. Away team goals
-4. Goal difference
-
-#### 📁 File Structure
-
-```
-EA-app/
-├── index.html                 # Home page
-├── leaderboard.html          # Player leaderboard
-├── game_weeks.html           # Phase matrix view
-├── crearCuenta.html          # Account creation
-├── js/
-│   ├── firebase-config.js    # Firebase configuration
-│   ├── calculations.js       # Scoring logic
-│   ├── tournament-config.js  # World Cup 2026 configuration
-│   └── ui-helpers.js         # Shared UI components
-├── css/
-│   ├── styles_final.css      # Main consolidated styles
-│   ├── styles2.css           # Legacy styles
-│   └── icon/favicon-ball.ico
-├── firebase-uploader/        # Logo upload utility
-├── firebase.json             # Firebase config
-├── .firebaserc               # Firebase project reference
-└── .gitignore                # Ignored files
-```
-
-#### 🎨 UI/UX Highlights
-
-- **Dark Theme**: Professional, eye-friendly dark interface with teal accents
-- **Event Delegation**: Efficient click handling for player history modals
-- **Data Normalization**: Handles both uppercase and lowercase Firestore property names
-- **Responsive**: Mobile-friendly design with Bootstrap
-- **Real-time**: Live data updates from Firestore
-- **Modal System**: Reusable player history modal component
-
-#### 🧪 Testing
-
-All core functionality is tested through the Firestore database integration. The application validates:
-- Scoring calculations with various prediction scenarios
-- Player statistics aggregation
-- Leaderboard accuracy
-
-For local testing, use your browser's DevTools console to verify:
-- Firebase connectivity
-- Data loading from Firestore
-- Player history modal functionality
-
-#### 🚀 Deployment
-
-The application is deployed on **Firebase Hosting** and automatically updates when changes are pushed.
-
-**To Deploy:**
-```bash
-# Ensure you have Firebase CLI installed
-npm install -g firebase-tools
-
-# Login to Firebase
-firebase login
-
-# Deploy to Firebase Hosting
-firebase deploy --only hosting
-```
-
-**Deployment includes:**
-- All HTML pages with responsive design
-- Modularized JavaScript (ES modules)
-- Consolidated CSS styling
-- All assets and images
-- Firebase configuration for authentication and Firestore access
-
-**Current Deployment:**
-🔗 **https://ea-football-predictor.web.app**
-
-To view deployment logs and history:
-```bash
-firebase hosting:channel:list
-firebase open hosting:site
-```
-
-#### 📝 Notes for Developers
-
-- **Player IDs**: Uses Firebase UID instead of player names for reliable data tracking
-- **Phases Won**: Calculates by comparing each player's score against ALL players' scores for that phase
-- **Firebase Modules**: Uses ES Module imports (modern approach, requires local server)
-- **Data Normalization**: `calculations.js` handles both `HomeScore`/`homeScore` property names
-
-#### 📄 License
-
-This project is open source and available under the MIT License.
+> La aplicación es exclusivamente un prode del FIFA World Cup 2026. No hay lógica multi-torneo ni dropdowns de liga: todo se fija en ese campeonato.
