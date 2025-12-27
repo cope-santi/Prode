@@ -35,6 +35,7 @@
     <div class="container py-4">
         <h1 class="text-center mb-4">FIFA World Cup 2026 Fixtures</h1>
         <p class="text-center text-muted mb-4">View all upcoming fixtures and results</p>
+        <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
         <!-- Phase Selector -->
         <div id="fixtures-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
@@ -53,7 +54,7 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { createPhaseSelector, updatePhaseSelectorState } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
@@ -68,6 +69,8 @@
 
         const gameListDiv = document.getElementById('game-list');
         const fixturesPhaseSelector = document.getElementById('fixtures-phase-selector');
+
+        loadSyncStatus();
 
         // Load teams first
         async function loadTeams() {
@@ -211,6 +214,24 @@
             await loadTeams();
             await loadGames();
         });
+
+        async function loadSyncStatus() {
+            const banner = document.getElementById('sync-status-banner');
+            if (!banner) return;
+
+            try {
+                const statusRef = doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId);
+                const statusSnap = await getDoc(statusRef);
+                const data = statusSnap.exists() ? statusSnap.data() : {};
+                const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
+                const lastText = lastSync
+                    ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
+                    : 'N/A';
+                banner.textContent = `Resultados con demora (plan gratuito). Última actualización: ${lastText}`;
+            } catch (error) {
+                banner.textContent = 'Resultados con demora (plan gratuito).';
+            }
+        }
     </script>
 
 </body>

@@ -24,6 +24,7 @@ let adminKickOffTimeInput;
 let adminStatusSelect;
 let adminHomeScoreInput;
 let adminAwayScoreInput;
+let adminManualOverrideInput;
 let addGameButton;
 let gameMessageDiv;
 // Fixture search removed for single-tournament scope
@@ -61,6 +62,7 @@ export function initializeAdminPanel(database, addDoc, collection) {
     adminStatusSelect = document.getElementById('adminStatus');
     adminHomeScoreInput = document.getElementById('adminHomeScore');
     adminAwayScoreInput = document.getElementById('adminAwayScore');
+    adminManualOverrideInput = document.getElementById('adminManualOverride');
     addGameButton = document.getElementById('addGameButton');
     gameMessageDiv = document.getElementById('gameMessage');
     
@@ -102,8 +104,10 @@ export async function handleAdminGameAdd() {
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
     const status = adminStatusSelect.value;
+    const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
     const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
+    const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
     // Basic validation
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
         gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
@@ -141,11 +145,28 @@ export async function handleAdminGameAdd() {
             HomeTeam: homeTeam,
             AwayTeam: awayTeam,
             KickOffTime: kickOffTime.toISOString(),
+            utcDate: kickOffTime.toISOString(),
             Status: status,
+            status: externalStatus,
             Stage: stage,
             Group: group,
             Matchday: matchday,
-            StageKey: stageKey
+            StageKey: stageKey,
+            isManuallyEdited: isManuallyEdited,
+            syncStatus: 'manual',
+            syncError: null,
+            score: {
+                home: homeScore,
+                away: awayScore,
+                fullTime: {
+                    home: homeScore,
+                    away: awayScore
+                },
+                halfTime: {
+                    home: null,
+                    away: null
+                }
+            }
         };
 
         if (status === 'finished' || status === 'live') {
@@ -202,6 +223,9 @@ function clearAdminForm() {
     }
     adminHomeScoreInput.value = "";
     adminAwayScoreInput.value = "";
+    if (adminManualOverrideInput) {
+        adminManualOverrideInput.checked = false;
+    }
 }
 
 function updateGroupMatchdayInputs() {

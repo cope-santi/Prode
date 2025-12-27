@@ -77,6 +77,7 @@
                         <img class="img-profile" src="css/images/EA-logo.png" alt="profile">
                         <h1 class="fw-bold">Eliminatorias Anónimas</h1>
                         <p>-- Mundial 2026 --</p>
+                        <div id="sync-status-banner" class="text-muted" style="font-size: 0.85rem;"></div>
                     </div>
                 </div>
 
@@ -220,7 +221,7 @@
     <script type="module">
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, query, orderBy, limit, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, addDoc, query, orderBy, limit, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         // Import Authentication functions
         import { getAuth, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
@@ -231,6 +232,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app); // Get a reference to the Firestore database
         const auth = getAuth(app); // Get a reference to the Firebase Auth service // ADD THIS LINE
+
+        loadSyncStatus();
         // New References for My Predictions section
         const myPredictionsSection = document.getElementById('my-predictions-section');
         const myPredictionsList = document.getElementById('my-predictions-list');
@@ -738,6 +741,24 @@
                     myPredictionsList.appendChild(predictionCard);
                 }
             });
+        }
+
+        async function loadSyncStatus() {
+            const banner = document.getElementById('sync-status-banner');
+            if (!banner) return;
+
+            try {
+                const statusRef = doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId);
+                const statusSnap = await getDoc(statusRef);
+                const data = statusSnap.exists() ? statusSnap.data() : {};
+                const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
+                const lastText = lastSync
+                    ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
+                    : 'N/A';
+                banner.textContent = `Resultados con demora (plan gratuito). Última actualización: ${lastText}`;
+            } catch (error) {
+                banner.textContent = 'Resultados con demora (plan gratuito).';
+            }
         }
 
         // --- Main Application Initialization Function ---

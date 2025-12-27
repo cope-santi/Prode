@@ -35,6 +35,7 @@
     <div class="container-fluid py-4">
         <h1 class="text-center mb-4">Fases del Mundial 2026</h1>
         <p class="text-center text-muted mb-4">Compare all players' scores across games by phase</p>
+        <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
         <!-- Phase Selector -->
         <div class="gameweek-selector text-center">
@@ -87,7 +88,7 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { calculatePoints, calculatePlayerStats, getPlayerStats, getScoreClass } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
@@ -95,6 +96,8 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        loadSyncStatus();
 
         // Store user display names globally
         let userDisplayNamesGlobal = {};
@@ -502,6 +505,24 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', loadPhases);
+
+        async function loadSyncStatus() {
+            const banner = document.getElementById('sync-status-banner');
+            if (!banner) return;
+
+            try {
+                const statusRef = doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId);
+                const statusSnap = await getDoc(statusRef);
+                const data = statusSnap.exists() ? statusSnap.data() : {};
+                const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
+                const lastText = lastSync
+                    ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
+                    : 'N/A';
+                banner.textContent = `Resultados con demora (plan gratuito). Última actualización: ${lastText}`;
+            } catch (error) {
+                banner.textContent = 'Resultados con demora (plan gratuito).';
+            }
+        }
     </script>
 
 </body>

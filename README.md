@@ -10,6 +10,7 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 * **Leaderboard centralizado** con puntos totales, fases ganadas y predicciones perfectas; clic para abrir historial detallado.
 * **Modal de historial** con predicciones + estadísticas calculadas a partir de todos los jugadores.
 * **Dashboard de admin** (solo para el UID configurado) para añadir/actualizar partidos del Mundial 2026.
+* **Override manual** opcional para bloquear sobreescritura del sync automático en partidos editados a mano.
 
 ## Arquitectura
 
@@ -22,6 +23,7 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 * `js/calculations.js` – lógica compartida de puntajes, estadísticas y normalización centrada en los campos definitivos.
 * `js/ui-helpers.js` – modales, tablas y selectores reutilizados por las vistas.
 * `js/admin-panel.js` – manejo del formulario del administrador con validaciones y envíos a Firestore.
+* `functions/` – Cloud Functions (Node 18) para sync automático + endpoints `/api`.
 
 ## Firebase (Firestore + Auth)
 
@@ -36,6 +38,52 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 
 * `games` – índice compuesto `tournamentId` + `KickOffTime` (para orden cronológico + filtrado único).
 * `predictions` – índice compuesto `tournamentId` + `timestamp` (ayuda a ordenar la historia de cada usuario).
+
+## Sincronización automática (Cloud Functions)
+
+El fixture y los resultados se sincronizan desde un provider externo (por defecto `football-data.org`).
+
+### Variables de entorno (Functions)
+
+Configurar en Firebase Functions (o `.env` local):
+
+* `PROVIDER=football-data`
+* `FOOTBALL_DATA_TOKEN=...`
+* `FOOTBALL_DATA_COMPETITION=WC` (o el ID/código de la competencia)
+* `TOURNAMENT_ID=FIFA2026`
+* `ADMIN_UID=...` (UID del admin para forzar sync)
+* `PROVIDER_CACHE_TTL_MS=20000` (opcional)
+* `LIVE_SYNC_DAYS_AHEAD=3` (opcional)
+* `FIXTURE_DAYS_AHEAD=200` (opcional)
+
+Usa `functions/.env.example` como guía local. En producción, definí estos valores como variables de entorno de Functions (Console de Firebase).
+
+### Jobs y endpoints
+
+* **Cron live**: cada 1 minuto (solo si hay partidos cercanos/en juego).
+* **Cron daily**: 1 vez por día para refrescar fixture.
+* **POST `/api/sync`**: fuerza sync manual (requiere `Authorization: Bearer <ID_TOKEN>` con `ADMIN_UID`).
+* **GET `/api/sync/status`**: devuelve estado del último sync.
+* **GET `/api/matches`**: devuelve matches en Firestore (actualizados).
+
+### Deploy de Functions
+
+```bash
+cd functions
+npm install
+firebase deploy --only functions
+```
+
+Para probar localmente, usa `firebase emulators:start --only functions,firestore` y completa `functions/.env.example`.
+
+### Campos adicionales en `games`
+
+* `externalProvider`, `externalMatchId`
+* `status` (SCHEDULED / IN_PLAY / PAUSED / FINISHED)
+* `score` (home/away + fullTime/halfTime)
+* `utcDate`
+* `lastSyncedAt`, `syncStatus`, `syncError`
+* `isManuallyEdited` (si está en `true`, el sync no sobrescribe)
 
 ## Esquema mínimo de Firestore
 
