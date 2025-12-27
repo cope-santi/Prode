@@ -4,8 +4,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Panel - Eliminatorias Anónimas</title>
-    <meta name="title" content="Admin Panel - Eliminatorias Anónimas" />
+    <title>Admin Panel - FIFA World Cup 2026</title>
+    <meta name="title" content="Admin Panel - FIFA World Cup 2026" />
     <meta name="description" content="Admin panel for managing football matches" />
 
     <link rel="preconnect" href="https://fonts.gstatic.com">
@@ -95,27 +95,7 @@
                 <div id="admin-game-form-section" style="display: none;">
                     <h2 class="mb-4">Add World Cup 2026 Match</h2>
 
-                    <!-- Fixture Search Section -->
-                    <div class="fixture-search-section mb-4 p-3 bg-light rounded">
-                        <div class="form-group mb-3">
-                            <label for="fixtureSearchHome">Home Team:</label>
-                            <input type="text" id="fixtureSearchHome" class="form-control" placeholder="e.g., Barcelona" list="teamNamesList">
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="fixtureSearchAway">Away Team:</label>
-                            <input type="text" id="fixtureSearchAway" class="form-control" placeholder="e.g., Real Madrid" list="teamNamesList">
-                        </div>
-                        <button id="searchFixturesButton" class="btn btn-info mb-3">Search Fixtures</button>
-                        <p id="fixtureMessage" class="mt-2 mb-3 text-center"></p>
-
-                        <!-- Fixture Results -->
-                        <div id="fixtureResults" style="display: none;">
-                            <div id="fixtureList" class="list-group mb-3" style="text-align: center;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Manual Form Entry (fallback) -->
-                    <hr>
+                    <!-- Manual Form Entry -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
@@ -191,8 +171,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <input type="hidden" id="adminThesportsdbEventId" value="">
 
                     <div class="text-center">
                         <button id="addGameButton" class="btn btn-primary-custom btn-lg">Add Game</button>

@@ -18,34 +18,4 @@ export const firebaseConfig = {
   appId: "1:909132807014:web:e837af32356a105891a6a7"
 };
 
-/**
- * Initialize Firebase and return app, db, and auth instances
- * Must be called after importing Firebase SDK modules
- * 
- * @returns {Object} Object containing { app, db, auth }
- */
-export function initializeFirebase() {
-    // These must be imported in the calling module before calling this function
-    // Example:
-    //   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-    //   import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-    //   import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-    //   import { firebaseConfig, initializeFirebase } from "./js/firebase-config.js";
-    
-    throw new Error('initializeFirebase() is deprecated. Import Firebase modules directly and use firebaseConfig instead.');
-}
-
-/**
- * Helper to initialize Firebase in a module script
- * Returns an initialization function that the calling module should use
- * 
- * Usage in your module:
- *   import { firebaseConfig } from './js/firebase-config.js';
- *   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
- *   import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
- *   import { getAuth } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
- *   
- *   const app = initializeApp(firebaseConfig);
- *   const db = getFirestore(app);
- *   const auth = getAuth(app);
- */
+// Import firebaseConfig in your modules and initialize Firebase there.

@@ -46,7 +46,7 @@
         <!-- View Options -->
         <div class="view-options">
             <button class="toggle-predictions" id="toggle-predictions-btn" onclick="window.togglePredictions()">
-                👁️ Show Predictions
+                Show Predictions
             </button>
         </div>
 
@@ -132,8 +132,7 @@
             try {
                 const gamesSnapshot = await getDocs(query(
                     collection(db, 'games'),
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('KickOffTime', 'asc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 ));
                 const phaseSet = new Set();
                 
@@ -229,7 +228,7 @@
         window.togglePredictions = function() {
             showPredictions = !showPredictions;
             const btn = document.getElementById('toggle-predictions-btn');
-            btn.textContent = showPredictions ? '👁️ Hide Predictions' : '👁️ Show Predictions';
+            btn.textContent = showPredictions ? 'Hide Predictions' : 'Show Predictions';
             if (currentMatrixGames && currentMatrixPredictions) {
                 renderMatrixWithData(currentMatrixGames, currentMatrixPredictions);
             }
@@ -349,7 +348,7 @@
                 // Reset predictions visibility if all games are still upcoming
                 if (!hasStartedGames(gamesFormatted)) {
                     showPredictions = false;
-                    document.getElementById('toggle-predictions-btn').textContent = '👁️ Show Predictions';
+                    document.getElementById('toggle-predictions-btn').textContent = 'Show Predictions';
                     document.getElementById('toggle-predictions-btn').disabled = true;
                     document.getElementById('toggle-predictions-btn').style.opacity = '0.5';
                     document.getElementById('toggle-predictions-btn').title = 'Predictions available after game starts';
@@ -453,7 +452,7 @@
                     const points = data.points;
                     const prediction = data.prediction;
                     const scoreClass = getScoreClass(points);
-                    const pointsDisplay = points === null ? '—' : points;
+                    const pointsDisplay = points === null ? '-' : points;
 
                     let scoreContent = pointsDisplay;
                     // Only show predictions if game has started (not upcoming) and predictions are toggled on

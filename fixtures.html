@@ -91,8 +91,7 @@
                 const gamesRef = collection(db, 'games');
                 const q = query(
                     gamesRef,
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('KickOffTime', 'asc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 );
                 const snapshot = await getDocs(q);
 
@@ -105,6 +104,11 @@
                 allGames = [];
                 snapshot.forEach(doc => {
                     allGames.push(doc.data());
+                });
+                allGames.sort((a, b) => {
+                    const timeA = a.KickOffTime ? new Date(a.KickOffTime).getTime() : 0;
+                    const timeB = b.KickOffTime ? new Date(b.KickOffTime).getTime() : 0;
+                    return timeA - timeB;
                 });
 
                 // Extract unique phases

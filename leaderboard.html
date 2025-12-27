@@ -101,8 +101,7 @@
                 // 1. Fetch all games
                 const gamesSnapshot = await getDocs(query(
                     collection(db, 'games'),
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('KickOffTime', 'desc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 ));
                 const games = [];
                 const gamesById = {};
@@ -116,8 +115,7 @@
                 // 2. Fetch all predictions
                 const predictionsSnapshot = await getDocs(query(
                     collection(db, 'predictions'),
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('timestamp', 'desc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 ));
                 const predictions = [];
                 

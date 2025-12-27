@@ -210,7 +210,14 @@ function aggregatePredictionsByPlayer(games, predictions) {
 
   // Build game map
   games.forEach(game => {
-    gameMap[game.id] = game;
+    // Normalize to a single schema so scoring works for Firestore-shaped docs
+    const normalized = {
+      id: game.id,
+      status: (game.status || game.Status || '').toLowerCase(),
+      homeScore: game.homeScore !== undefined ? game.homeScore : game.HomeScore,
+      awayScore: game.awayScore !== undefined ? game.awayScore : game.AwayScore
+    };
+    gameMap[game.id] = normalized;
     gameIds.add(game.id);
   });
 
@@ -226,11 +233,7 @@ function aggregatePredictionsByPlayer(games, predictions) {
         matrix[playerId] = {};
       }
 
-      const points = calculatePoints(pred, {
-        status: game.status,
-        homeScore: game.homeScore,
-        awayScore: game.awayScore
-      });
+      const points = calculatePoints(pred, game);
 
       matrix[playerId][pred.gameId] = {
         points,
@@ -341,7 +344,6 @@ function normalizeGame(firestoreGame) {
     group: firestoreGame.Group,
     matchday: firestoreGame.Matchday,
     stageKey: firestoreGame.StageKey,
-    league: firestoreGame.League,
     // Keep original fields for backward compatibility
     HomeTeam: firestoreGame.HomeTeam,
     AwayTeam: firestoreGame.AwayTeam,
@@ -352,8 +354,7 @@ function normalizeGame(firestoreGame) {
     Stage: firestoreGame.Stage,
     Group: firestoreGame.Group,
     Matchday: firestoreGame.Matchday,
-    StageKey: firestoreGame.StageKey,
-    League: firestoreGame.League
+    StageKey: firestoreGame.StageKey
   };
 }
 

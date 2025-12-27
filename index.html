@@ -426,8 +426,7 @@
                 const gamesRef = collection(db, 'games');
                 const q = query(
                     gamesRef,
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('KickOffTime', 'asc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 );
                 const snapshot = await getDocs(q);
 
@@ -475,6 +474,11 @@
                         predictionFormGamesDiv.appendChild(predictionGameCard);
                         gamesForPrediction.push({ id: gameId, ...game });
                     }
+                });
+                gamesForPrediction.sort((a, b) => {
+                    const timeA = a.KickOffTime ? new Date(a.KickOffTime).getTime() : 0;
+                    const timeB = b.KickOffTime ? new Date(b.KickOffTime).getTime() : 0;
+                    return timeA - timeB;
                 });
 
                 if (gamesForPrediction.length === 0) {
@@ -618,8 +622,7 @@
                 const q = query(
                     myPredictionsRef,
                     where('userId', '==', currentUserId),
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
-                    orderBy('timestamp', 'desc')
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 );
                 const snapshot = await getDocs(q);
 
@@ -633,6 +636,11 @@
                 allUserPredictions = [];
                 snapshot.forEach(predictionDoc => {
                     allUserPredictions.push(predictionDoc.data());
+                });
+                allUserPredictions.sort((a, b) => {
+                    const timeA = a.timestamp ? new Date(a.timestamp.toDate ? a.timestamp.toDate() : a.timestamp).getTime() : 0;
+                    const timeB = b.timestamp ? new Date(b.timestamp.toDate ? b.timestamp.toDate() : b.timestamp).getTime() : 0;
+                    return timeB - timeA;
                 });
 
                 // Fetch all game data once

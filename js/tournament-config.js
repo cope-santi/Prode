@@ -1,7 +1,6 @@
 export const TOURNAMENT_CONFIG = {
     tournamentId: 'FIFA2026',
     displayName: 'FIFA World Cup 2026',
-    theSportsDbLeagueId: null,
     stages: [
         { id: 'GROUP', label: 'Group Stage', requiresGroup: true, requiresMatchday: true },
         { id: 'R32', label: 'Round of 32', requiresGroup: false, requiresMatchday: false },

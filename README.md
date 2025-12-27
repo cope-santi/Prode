@@ -69,22 +69,22 @@ The application is deployed on **Firebase Hosting**:
 4.  **Open in Browser**:
     Navigate to `http://localhost:8000` and explore!
 
-#### 🏆 Cómo cargar datos del Mundial 2026
+#### 🏆 Datos fijos para Mundial 2026 (Firestore)
 
-1. **Configurar torneo único**:
-   * Verifica `js/tournament-config.js` (tournamentId `FIFA2026`, displayName `FIFA World Cup 2026`, stages y grupos A–L).
-2. **Cargar equipos**:
-   * En la colección `teams` de Firestore, guarda solo selecciones nacionales y sus logos (campo `name` y `logoUrl`).
-3. **Cargar partidos**:
-   * En la colección `games`, cada documento debe incluir:
-     * `tournamentId: "FIFA2026"`
-     * `Stage` (`GROUP`, `R32`, `R16`, `QF`, `SF`, `3P`, `FINAL`)
-     * `Group` (A–L) y `Matchday` (1–3) **solo** para fase de grupos
-     * `StageKey` (`GROUP-A-MD1` o `R16`, etc.)
-     * `KickOffTime`, `HomeTeam`, `AwayTeam`, `Status`, `HomeScore`, `AwayScore`
-4. **Cargar fixtures desde TheSportsDB** (opcional):
-   * El buscador de fixtures filtra por “World Cup” si TheSportsDB devuelve el torneo.
-   * Revisa que `theSportsDbLeagueId` en `js/tournament-config.js` esté definido si usas ID de liga.
+1. **Torneo único**: `js/tournament-config.js` ya fija `tournamentId: "FIFA2026"` y `displayName: "FIFA World Cup 2026"`.
+2. **Colección games** (documentos auto-ID):
+   * `tournamentId: "FIFA2026"`
+   * `Stage` (`GROUP`, `R32`, `R16`, `QF`, `SF`, `3P`, `FINAL`)
+   * `Group` (A–L) y `Matchday` (1–3) solo para grupos
+   * `StageKey` precomputado (`GROUP-A-MD1`, `R16`, etc.)
+   * `KickOffTime` (ISO string), `HomeTeam`, `AwayTeam`, `Status` (`upcoming`/`live`/`finished`), `HomeScore`, `AwayScore`
+3. **Colección predictions**:
+   * `userId`, `playerName`, `gameId`, `predictedHomeScore`, `predictedAwayScore`, `timestamp`, `tournamentId: "FIFA2026"`
+4. **Colección teams** (opcional, solo para logos):
+   * `name`, `logoUrl`
+5. **Índices recomendados** (Firestore):
+   * `games`: `tournamentId` + `KickOffTime`
+   * `predictions`: `tournamentId` + `timestamp`
 
 ## 🔒 Security Notes
 

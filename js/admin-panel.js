@@ -3,7 +3,6 @@
  * 
  * Handles all admin-related functionality:
  * - Admin form initialization and DOM references
- * - Fixture search integration with TheSportsDB
  * - Game addition to Firestore
  * - Form submission and validation
  * 
@@ -26,14 +25,8 @@ let adminStatusSelect;
 let adminHomeScoreInput;
 let adminAwayScoreInput;
 let addGameButton;
-let fixtureMessageDiv;
 let gameMessageDiv;
-let searchFixturesButton;
-let fixtureSearchHome;
-let fixtureSearchAway;
-let fixtureResults;
-let fixtureList;
-let adminThesportsdbEventId;
+// Fixture search removed for single-tournament scope
 
 // Database references (passed in during initialization)
 let db;
@@ -51,11 +44,11 @@ export function initializeAdminPanel(database, addDoc, collection) {
     addDocFunction = addDoc;
     collectionFunction = collection;
     
-    // Debug logging
+    // Debug logging (ASCII-only to avoid encoding issues)
     console.log("Admin panel initialized with:");
-    console.log("  db:", db ? "✓" : "✗");
-    console.log("  addDocFunction:", addDocFunction ? "✓" : "✗");
-    console.log("  collectionFunction:", collectionFunction ? "✓" : "✗");
+    console.log("  db:", !!db ? "OK" : "MISSING");
+    console.log("  addDocFunction:", !!addDocFunction ? "OK" : "MISSING");
+    console.log("  collectionFunction:", !!collectionFunction ? "OK" : "MISSING");
     
     // Get all admin form references
     adminGameFormSection = document.getElementById('admin-game-form-section');
@@ -69,21 +62,9 @@ export function initializeAdminPanel(database, addDoc, collection) {
     adminHomeScoreInput = document.getElementById('adminHomeScore');
     adminAwayScoreInput = document.getElementById('adminAwayScore');
     addGameButton = document.getElementById('addGameButton');
-    fixtureMessageDiv = document.getElementById('fixtureMessage');
     gameMessageDiv = document.getElementById('gameMessage');
     
-    // Get fixture search references
-    searchFixturesButton = document.getElementById('searchFixturesButton');
-    fixtureSearchHome = document.getElementById('fixtureSearchHome');
-    fixtureSearchAway = document.getElementById('fixtureSearchAway');
-    fixtureResults = document.getElementById('fixtureResults');
-    fixtureList = document.getElementById('fixtureList');
-    adminThesportsdbEventId = document.getElementById('adminThesportsdbEventId');
-    
     // Attach event listeners
-    if (searchFixturesButton) {
-        searchFixturesButton.addEventListener('click', handleFixtureSearch);
-    }
     if (addGameButton) {
         addGameButton.addEventListener('click', handleAdminGameAdd);
     }
@@ -102,7 +83,6 @@ export function toggleAdminForm(show) {
     }
     // Clear any error messages when showing the form
     if (show) {
-        if (fixtureMessageDiv) fixtureMessageDiv.textContent = '';
         if (gameMessageDiv) gameMessageDiv.textContent = '';
     }
 }
@@ -124,8 +104,6 @@ export async function handleAdminGameAdd() {
     const status = adminStatusSelect.value;
     const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
     const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
-    const thesportsdbEventId = adminThesportsdbEventId.value || null;
-
     // Basic validation
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
         gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
@@ -167,14 +145,8 @@ export async function handleAdminGameAdd() {
             Stage: stage,
             Group: group,
             Matchday: matchday,
-            StageKey: stageKey,
-            League: TOURNAMENT_CONFIG.displayName
+            StageKey: stageKey
         };
-
-        // Add thesportsdbEventId if available
-        if (thesportsdbEventId) {
-            gameData.thesportsdbEventId = thesportsdbEventId;
-        }
 
         if (status === 'finished' || status === 'live') {
             gameData.HomeScore = homeScore;
@@ -186,9 +158,9 @@ export async function handleAdminGameAdd() {
 
         // Use the Firestore functions passed during initialization
         console.log("Before adding game - checking functions:");
-        console.log("  addDocFunction:", addDocFunction ? "✓" : "✗");
-        console.log("  collectionFunction:", collectionFunction ? "✓" : "✗");
-        console.log("  db:", db ? "✓" : "✗");
+        console.log("  addDocFunction:", !!addDocFunction ? "OK" : "MISSING");
+        console.log("  collectionFunction:", !!collectionFunction ? "OK" : "MISSING");
+        console.log("  db:", !!db ? "OK" : "MISSING");
         
         if (!addDocFunction || !collectionFunction) {
             throw new Error("Firestore functions not initialized. This is a bug in the initialization code.");
@@ -213,95 +185,6 @@ export async function handleAdminGameAdd() {
     }
 }
 
-/**
- * Handle fixture search from TheSportsDB
- */
-export async function handleFixtureSearch() {
-    const homeTeam = fixtureSearchHome.value.trim();
-    const awayTeam = fixtureSearchAway.value.trim();
-
-    if (!homeTeam || !awayTeam) {
-        fixtureMessageDiv.textContent = 'Please enter both home and away team names';
-        fixtureMessageDiv.style.color = 'red';
-        return;
-    }
-
-    try {
-        fixtureMessageDiv.textContent = 'Searching fixtures...';
-        fixtureMessageDiv.style.color = 'blue';
-        fixtureList.innerHTML = '';
-
-        // Dynamically import the fixture search module
-        const { searchFixture } = await import('../firebase-uploader/src/fetchFixtures.js');
-        const fixtures = await searchFixture(homeTeam, awayTeam);
-
-        if (!fixtures || fixtures.length === 0) {
-            fixtureMessageDiv.textContent = 'No fixtures found for this match';
-            fixtureMessageDiv.style.color = 'orange';
-            fixtureResults.style.display = 'none';
-            return;
-        }
-
-        // Display fixtures
-        fixtureList.innerHTML = '';
-        fixtures.forEach((fixture, index) => {
-            const fixtureButton = document.createElement('button');
-            fixtureButton.type = 'button';
-            fixtureButton.className = 'list-group-item list-group-item-action';
-            fixtureButton.innerHTML = `
-                <div class="text-center">
-                    <strong>${fixture.HomeTeam} vs ${fixture.AwayTeam}</strong><br>
-                    <small>${new Date(fixture.KickOffTime).toLocaleString()}</small><br>
-                    <small class="text-muted">${TOURNAMENT_CONFIG.displayName}</small>
-                </div>
-            `;
-            fixtureButton.addEventListener('click', () => selectFixture(fixture));
-            fixtureList.appendChild(fixtureButton);
-        });
-
-        fixtureResults.style.display = 'block';
-        fixtureMessageDiv.textContent = `Found ${fixtures.length} fixture(s)`;
-        fixtureMessageDiv.style.color = 'green';
-
-    } catch (error) {
-        console.error('Error searching fixtures:', error);
-        fixtureMessageDiv.textContent = `Error searching fixtures: ${error.message}`;
-        fixtureMessageDiv.style.color = 'red';
-        fixtureResults.style.display = 'none';
-    }
-}
-
-/**
- * Select a fixture and populate the form
- * @param {object} fixture - Fixture object from searchFixture
- */
-export function selectFixture(fixture) {
-    adminHomeTeamInput.value = fixture.HomeTeam;
-    adminAwayTeamInput.value = fixture.AwayTeam;
-    if (adminStageSelect) {
-        adminStageSelect.value = 'GROUP';
-    }
-    
-    // Convert ISO string to datetime-local format
-    const date = new Date(fixture.KickOffTime);
-    const localDateTime = date.toISOString().slice(0, 16);
-    adminKickOffTimeInput.value = localDateTime;
-    
-    adminThesportsdbEventId.value = fixture.thesportsdbEventId;
-    
-    // Hide results
-    fixtureResults.style.display = 'none';
-    fixtureMessageDiv.textContent = `Fixture selected: ${fixture.HomeTeam} vs ${fixture.AwayTeam}`;
-    fixtureMessageDiv.style.color = 'green';
-    
-    // Scroll to form section
-    const fixtureSearchSection = document.querySelector('.fixture-search-section');
-    if (fixtureSearchSection) {
-        fixtureSearchSection.scrollIntoView({ behavior: 'smooth' });
-    }
-}
-
-/**
  * Clear the admin form
  */
 function clearAdminForm() {
@@ -319,10 +202,6 @@ function clearAdminForm() {
     }
     adminHomeScoreInput.value = "";
     adminAwayScoreInput.value = "";
-    adminThesportsdbEventId.value = "";
-    fixtureSearchHome.value = "";
-    fixtureSearchAway.value = "";
-    fixtureResults.style.display = 'none';
 }
 
 function updateGroupMatchdayInputs() {
@@ -416,29 +295,6 @@ export async function populateAdminDropdowns() {
     }
 }
 
-/**
- * Populate league dropdown (legacy - for direct use)
- * @param {array} leagues - Array of league objects or names
- */
-export function populateLeagueDropdown(leagues) {
-    if (!adminStageSelect) return;
-    
-    adminStageSelect.innerHTML = '<option value="">Select Stage</option>';
-    if (Array.isArray(leagues)) {
-        leagues.forEach(league => {
-            const leagueName = typeof league === 'string' ? league : league.name || league;
-            const option = document.createElement('option');
-            option.value = leagueName;
-            option.textContent = leagueName;
-            adminStageSelect.appendChild(option);
-        });
-    }
-}
-
-/**
- * Populate team datalist for autocomplete on text inputs
- * @param {array} teams - Array of team objects or names
- */
 export function populateTeamDatalist(teams) {
     console.log("populateTeamDatalist called with teams:", teams);
     
@@ -461,7 +317,7 @@ export function populateTeamDatalist(teams) {
                 datalist.appendChild(option);
             }
         });
-        console.log(`✓ Added ${teams.length} teams to datalist`);
+        console.log(`Added ${teams.length} teams to datalist`);
     } else {
         console.warn("No teams provided to populateTeamDatalist");
     }
