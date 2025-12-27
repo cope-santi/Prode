@@ -10,12 +10,12 @@
  */
 
 export const firebaseConfig = {
-    apiKey: "AIzaSyDLfJ01cou9x4dBIirKbb016a69phKXOPc",
-    authDomain: "ea-football-predictor.firebaseapp.com",
-    projectId: "ea-football-predictor",
-    storageBucket: "ea-football-predictor.firebasestorage.app",
-    messagingSenderId: "419246128197",
-    appId: "1:419246128197:web:3082ec10e3e4e81432b72c"
+  apiKey: "AIzaSyDiXK6wk760_u0L-wQVjM2ekw2pr74byrc",
+  authDomain: "mundial2026-9d7da.firebaseapp.com",
+  projectId: "mundial2026-9d7da",
+  storageBucket: "mundial2026-9d7da.firebasestorage.app",
+  messagingSenderId: "909132807014",
+  appId: "1:909132807014:web:e837af32356a105891a6a7"
 };
 
 /**
