@@ -23,7 +23,8 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 * `js/calculations.js` – lógica compartida de puntajes, estadísticas y normalización centrada en los campos definitivos.
 * `js/ui-helpers.js` – modales, tablas y selectores reutilizados por las vistas.
 * `js/admin-panel.js` – manejo del formulario del administrador con validaciones y envíos a Firestore.
-* `functions/` – Cloud Functions (Node 18) para sync automático + endpoints `/api`.
+* `scripts/sync/` – script Node para sync post-partido ejecutado por GitHub Actions.
+* `.github/workflows/post_match_sync.yml` – cron gratis para actualizar Firestore.
 
 ## Firebase (Firestore + Auth)
 
@@ -39,50 +40,43 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 * `games` – índice compuesto `tournamentId` + `KickOffTime` (para orden cronológico + filtrado único).
 * `predictions` – índice compuesto `tournamentId` + `timestamp` (ayuda a ordenar la historia de cada usuario).
 
-## Sincronización automática (Cloud Functions)
+## Sincronizacion automatica (GitHub Actions)
 
-El fixture y los resultados se sincronizan desde un provider externo (por defecto `football-data.org`, con soporte para `thesportsdb`). La sincronización es **post‑partido** (no en vivo), y el plan gratuito puede tener demoras.
+El fixture y los resultados se sincronizan post-partido con un script Node ejecutado por GitHub Actions. No hay Cloud Functions ni Scheduler (plan Spark).
 
-### Variables de entorno (Functions)
+### Secrets requeridos (GitHub)
 
-Configurar en Firebase Functions (o `.env` local):
-
-* `PROVIDER=football-data` o `PROVIDER=thesportsdb`
-* `FOOTBALL_DATA_TOKEN=...` (si usas football-data)
-* `FOOTBALL_DATA_COMPETITION=WC` (o el ID/código de la competencia)
-* `THESPORTSDB_API_KEY=...` (si usas TheSportsDB)
-* `THESPORTSDB_LEAGUE_ID=...`
-* `THESPORTSDB_SEASON=2026` (opcional)
+* `FIREBASE_SERVICE_ACCOUNT_JSON` (JSON completo del service account, no commitear)
+* `FIREBASE_PROJECT_ID`
+* `THESPORTSDB_API_KEY`
+* `THESPORTSDB_LEAGUE_ID`
+* `THESPORTSDB_SEASON` (opcional)
 * `TOURNAMENT_ID=FIFA2026`
-* `ADMIN_UID=...` (UID del admin para forzar sync)
-* `PROVIDER_CACHE_TTL_MS=20000` (opcional)
-* `LIVE_SYNC_DAYS_AHEAD=3` (opcional)
-* `POST_MATCH_SYNC_MINUTES=10` (opcional)
 * `LOOKBACK_DAYS=2` (opcional)
+* `POST_MATCH_SYNC_MINUTES=10` (opcional, usado para lock)
+* `PROVIDER_CACHE_TTL_MS=20000` (opcional)
 
-Usa `functions/.env.example` como guía local. En producción, definí estos valores como variables de entorno de Functions (Console de Firebase).
+Tip: crear un service account en Firebase Console, descargar el JSON y pegarlo completo en `FIREBASE_SERVICE_ACCOUNT_JSON`.
 
-### Jobs y endpoints
+### Workflow
 
-* **Cron post-match**: cada `POST_MATCH_SYNC_MINUTES` (no actualiza en vivo; sólo al finalizar).
-* **POST `/api/sync`**: fuerza sync manual (requiere `Authorization: Bearer <ID_TOKEN>` con `ADMIN_UID`).
-* **GET `/api/sync/status`**: devuelve estado del último sync.
-* **GET `/api/matches`**: devuelve matches en Firestore (actualizados).
+* `.github/workflows/post_match_sync.yml` corre cada 10 minutos y permite ejecucion manual.
+* Para cambiar la frecuencia, editar el cron del workflow (por ejemplo a 15 minutos).
+* Usa 2 requests por corrida (eventos pasados + proximos).
+* Solo escribe scores cuando el partido esta FINISHED.
 
-### Deploy de Functions
+### Ejecutar local
 
 ```bash
-cd functions
+cd scripts/sync
 npm install
-firebase deploy --only functions
+node run.js
 ```
 
-Para probar localmente, usa `firebase emulators:start --only functions,firestore` y completa `functions/.env.example`.
-
-### Tests rápidos (mocks)
+### Tests rapidos (mocks)
 
 ```bash
-node functions/tests/thesportsdb-mapper.test.js
+node scripts/sync/tests/thesportsdb-mapper.test.js
 ```
 
 ### Campos adicionales en `games`

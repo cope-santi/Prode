@@ -1,22 +1,14 @@
 {
-  "functions": {
-    "source": "functions"
-  },
   "hosting": {
     "public": ".", 
     "ignore": [
       "firebase.json",
-      "functions/**",
       "**/node_modules/**",
       "**/.*",
       "**/node_modules/**",
       "**/.venv/**"
     ],
     "rewrites": [
-      {
-        "source": "/api/**",
-        "function": "api"
-      },
       {
         "source": "**",
         "destination": "/index.html"

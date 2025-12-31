@@ -18,6 +18,7 @@ yarn-debug.log*
 yarn-error.log*
 firebase-debug.log*
 firebase-debug.*.log*
+firebase_debug_log.txt
 
 # Firebase cache
 .firebase/

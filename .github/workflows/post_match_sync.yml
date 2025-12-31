@@ -1,0 +1,36 @@
+name: Post Match Sync
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        working-directory: scripts/sync
+        run: npm install
+
+      - name: Run sync
+        working-directory: scripts/sync
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
+          THESPORTSDB_LEAGUE_ID: ${{ secrets.THESPORTSDB_LEAGUE_ID }}
+          THESPORTSDB_SEASON: ${{ secrets.THESPORTSDB_SEASON }}
+          TOURNAMENT_ID: ${{ secrets.TOURNAMENT_ID }}
+          LOOKBACK_DAYS: ${{ secrets.LOOKBACK_DAYS }}
+          POST_MATCH_SYNC_MINUTES: ${{ secrets.POST_MATCH_SYNC_MINUTES }}
+          PROVIDER_CACHE_TTL_MS: ${{ secrets.PROVIDER_CACHE_TTL_MS }}
+        run: node run.js
