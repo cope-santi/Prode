@@ -274,9 +274,9 @@
                 const lastText = lastSync
                     ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
                     : 'N/A';
-                banner.textContent = `Resultados con demora (plan gratuito). Última actualización: ${lastText}`;
+                banner.textContent = `Actualización automática post-partido (no en vivo). Última sync: ${lastText}`;
             } catch (error) {
-                banner.textContent = 'Resultados con demora (plan gratuito).';
+                banner.textContent = 'Actualización automática post-partido (no en vivo).';
             }
         }
     </script>

@@ -21,9 +21,10 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
     try {
       matches = await provider.getMatchesByDateRange(dateFrom, dateTo);
     } catch (error) {
+      const syncStatus = error.code === "rate_limit" ? "rate_limit" : "error";
       await updateSyncStatus(db, config.tournamentId, {
         lastRunAt: now,
-        syncStatus: "error",
+        syncStatus,
         syncError: error.message || String(error),
         provider: config.provider,
         mode,
@@ -61,9 +62,14 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
     let updated = 0;
     let created = 0;
     let skippedManual = 0;
+    let skippedUnchanged = 0;
+    let writeCount = 0;
 
     matches.forEach(match => {
       const mapped = mapMatchToGame(match, config.provider);
+      if (!mapped.externalMatchId) {
+        return;
+      }
       const externalKey = `${config.provider}:${mapped.externalMatchId}`;
       const matchKey = buildMatchKey({
         homeTeam: mapped.HomeTeam,
@@ -81,6 +87,7 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
             syncStatus: "skipped_manual"
           };
           batch.set(existingDoc.ref, manualUpdate, { merge: true });
+          writeCount += 1;
           skippedManual += 1;
           return;
         }
@@ -92,7 +99,13 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
           syncStatus: "ok",
           syncError: null
         };
-        batch.set(existingDoc.ref, updatePayload, { merge: true });
+        const sanitized = sanitizePayload(updatePayload, existingData);
+        if (!hasChanges(sanitized, existingData)) {
+          skippedUnchanged += 1;
+          return;
+        }
+        batch.set(existingDoc.ref, sanitized, { merge: true });
+        writeCount += 1;
         updated += 1;
         return;
       }
@@ -107,11 +120,13 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
         syncError: null,
         isManuallyEdited: false
       };
-      batch.set(docRef, createPayload, { merge: true });
+      const sanitizedCreate = sanitizePayload(createPayload, {});
+      batch.set(docRef, sanitizedCreate, { merge: true });
+      writeCount += 1;
       created += 1;
     });
 
-    if (matches.length > 0) {
+    if (writeCount > 0) {
       await batch.commit();
     }
 
@@ -126,10 +141,11 @@ async function syncMatches({ mode, dateFrom, dateTo, allowManualOverwrite = fals
       dateTo,
       updated,
       created,
-      skippedManual
+      skippedManual,
+      skippedUnchanged
     });
 
-    return { updated, created, skippedManual, totalMatches: matches.length };
+    return { updated, created, skippedManual, skippedUnchanged, totalMatches: matches.length };
   });
 }
 
@@ -180,3 +196,62 @@ async function withSyncLock(db, lockKey, handler) {
 module.exports = {
   syncMatches
 };
+
+function sanitizePayload(payload, existingData) {
+  const sanitized = { ...payload };
+  const mappedStatus = String(payload.status || "");
+  const existingStatus = String(existingData.status || "");
+
+  if (existingStatus === "FINISHED" && mappedStatus !== "FINISHED") {
+    sanitized.status = existingData.status;
+    sanitized.Status = existingData.Status;
+  }
+
+  if (sanitized.status !== "FINISHED") {
+    delete sanitized.score;
+    delete sanitized.HomeScore;
+    delete sanitized.AwayScore;
+  }
+
+  return sanitized;
+}
+
+function hasChanges(payload, existingData) {
+  const fields = [
+    "HomeTeam",
+    "AwayTeam",
+    "KickOffTime",
+    "utcDate",
+    "Status",
+    "status",
+    "HomeScore",
+    "AwayScore",
+    "Stage",
+    "Group",
+    "Matchday",
+    "StageKey",
+    "externalProvider",
+    "externalMatchId",
+    "score"
+  ];
+
+  return fields.some(field => {
+    if (!(field in payload)) return false;
+    const nextValue = normalizeValue(payload[field]);
+    const currentValue = normalizeValue(existingData[field]);
+    return nextValue !== currentValue;
+  });
+}
+
+function normalizeValue(value) {
+  if (value === undefined) return "undefined";
+  if (value === null) return "null";
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch (error) {
+      return String(value);
+    }
+  }
+  return String(value);
+}

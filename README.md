@@ -41,27 +41,30 @@ Una web app ligera para hacer un prode exclusivo del FIFA World Cup 2026 con Fir
 
 ## Sincronización automática (Cloud Functions)
 
-El fixture y los resultados se sincronizan desde un provider externo (por defecto `football-data.org`).
+El fixture y los resultados se sincronizan desde un provider externo (por defecto `football-data.org`, con soporte para `thesportsdb`). La sincronización es **post‑partido** (no en vivo), y el plan gratuito puede tener demoras.
 
 ### Variables de entorno (Functions)
 
 Configurar en Firebase Functions (o `.env` local):
 
-* `PROVIDER=football-data`
-* `FOOTBALL_DATA_TOKEN=...`
+* `PROVIDER=football-data` o `PROVIDER=thesportsdb`
+* `FOOTBALL_DATA_TOKEN=...` (si usas football-data)
 * `FOOTBALL_DATA_COMPETITION=WC` (o el ID/código de la competencia)
+* `THESPORTSDB_API_KEY=...` (si usas TheSportsDB)
+* `THESPORTSDB_LEAGUE_ID=...`
+* `THESPORTSDB_SEASON=2026` (opcional)
 * `TOURNAMENT_ID=FIFA2026`
 * `ADMIN_UID=...` (UID del admin para forzar sync)
 * `PROVIDER_CACHE_TTL_MS=20000` (opcional)
 * `LIVE_SYNC_DAYS_AHEAD=3` (opcional)
-* `FIXTURE_DAYS_AHEAD=200` (opcional)
+* `POST_MATCH_SYNC_MINUTES=10` (opcional)
+* `LOOKBACK_DAYS=2` (opcional)
 
 Usa `functions/.env.example` como guía local. En producción, definí estos valores como variables de entorno de Functions (Console de Firebase).
 
 ### Jobs y endpoints
 
-* **Cron live**: cada 1 minuto (solo si hay partidos cercanos/en juego).
-* **Cron daily**: 1 vez por día para refrescar fixture.
+* **Cron post-match**: cada `POST_MATCH_SYNC_MINUTES` (no actualiza en vivo; sólo al finalizar).
 * **POST `/api/sync`**: fuerza sync manual (requiere `Authorization: Bearer <ID_TOKEN>` con `ADMIN_UID`).
 * **GET `/api/sync/status`**: devuelve estado del último sync.
 * **GET `/api/matches`**: devuelve matches en Firestore (actualizados).
@@ -75,6 +78,12 @@ firebase deploy --only functions
 ```
 
 Para probar localmente, usa `firebase emulators:start --only functions,firestore` y completa `functions/.env.example`.
+
+### Tests rápidos (mocks)
+
+```bash
+node functions/tests/thesportsdb-mapper.test.js
+```
 
 ### Campos adicionales en `games`
 

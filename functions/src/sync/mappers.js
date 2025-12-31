@@ -61,6 +61,13 @@ function pickScore(match) {
 }
 
 function mapMatchToGame(match, providerName) {
+  if (providerName === "thesportsdb") {
+    return mapSportsDbMatch(match, providerName);
+  }
+  return mapFootballDataMatch(match, providerName);
+}
+
+function mapFootballDataMatch(match, providerName) {
   const stage = STAGE_MAP[match.stage] || null;
   const group = normalizeGroup(match.group);
   const matchday = match.matchday || null;
@@ -86,6 +93,126 @@ function mapMatchToGame(match, providerName) {
     Matchday: matchday,
     StageKey: stageKey
   };
+}
+
+function mapSportsDbMatch(match, providerName) {
+  const status = mapSportsDbStatus(match.strStatus);
+  const legacyStatus = mapStatusToLegacy(status);
+  const score = {
+    home: parseScore(match.intHomeScore),
+    away: parseScore(match.intAwayScore),
+    fullTime: {
+      home: parseScore(match.intHomeScore),
+      away: parseScore(match.intAwayScore)
+    },
+    halfTime: {
+      home: null,
+      away: null
+    }
+  };
+
+  const roundText = match.strRound || match.strEvent || "";
+  const stage = mapRoundToStage(roundText);
+  const group = extractGroup(match.strGroup || roundText);
+  const matchday = parseMatchday(match.intRound, roundText);
+  const stageKey = buildStageKey({ stage, group, matchday });
+  const utcDate = parseSportsDbUtcDate(match);
+
+  return {
+    externalProvider: providerName,
+    externalMatchId: String(match.idEvent || ""),
+    utcDate,
+    status,
+    score,
+    HomeTeam: match.strHomeTeam || "",
+    AwayTeam: match.strAwayTeam || "",
+    KickOffTime: utcDate,
+    Status: legacyStatus,
+    HomeScore: score.home,
+    AwayScore: score.away,
+    Stage: stage,
+    Group: group,
+    Matchday: matchday,
+    StageKey: stageKey
+  };
+}
+
+function mapSportsDbStatus(rawStatus) {
+  const status = String(rawStatus || "").toLowerCase();
+  if (status.includes("finished")) return "FINISHED";
+  if (status.includes("half")) return "PAUSED";
+  if (status.includes("in progress") || status.includes("live")) return "IN_PLAY";
+  if (status.includes("not started") || status.includes("scheduled")) return "SCHEDULED";
+  return "SCHEDULED";
+}
+
+function parseScore(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function mapRoundToStage(text) {
+  const normalized = String(text || "").toLowerCase();
+  if (normalized.includes("round of 32") || normalized.includes("last 32")) return "R32";
+  if (normalized.includes("round of 16") || normalized.includes("last 16")) return "R16";
+  if (normalized.includes("quarter")) return "QF";
+  if (normalized.includes("semi")) return "SF";
+  if (normalized.includes("third")) return "3P";
+  if (normalized.includes("final")) return "FINAL";
+  if (normalized.includes("group")) return "GROUP";
+  return null;
+}
+
+function extractGroup(value) {
+  const text = String(value || "");
+  const match = text.match(/group\s*([a-z])/i);
+  if (match) return match[1].toUpperCase();
+  if (text.length === 1) return text.toUpperCase();
+  return null;
+}
+
+function parseMatchday(intRound, roundText) {
+  const roundNum = parseInt(intRound, 10);
+  if (!Number.isNaN(roundNum) && roundNum > 0) {
+    return roundNum;
+  }
+  const match = String(roundText || "").match(/(\d+)/);
+  if (match) {
+    const parsed = parseInt(match[1], 10);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+function parseSportsDbUtcDate(match) {
+  const timestamp = match.strTimestamp;
+  const dateEvent = match.dateEvent;
+  const timeEvent = match.strTime;
+
+  if (timestamp) {
+    return toIso(timestamp);
+  }
+
+  if (dateEvent && timeEvent) {
+    return toIso(`${dateEvent} ${timeEvent}`);
+  }
+
+  if (dateEvent) {
+    return `${dateEvent}T00:00:00Z`;
+  }
+
+  return null;
+}
+
+function toIso(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const withZone = normalized.endsWith("Z") ? normalized : `${normalized}Z`;
+  const parsed = Date.parse(withZone);
+  if (Number.isNaN(parsed)) return null;
+  return new Date(parsed).toISOString();
 }
 
 function buildMatchKey({ homeTeam, awayTeam, utcDate }) {

@@ -31,6 +31,12 @@ class FootballDataProvider {
       }
     });
 
+    if (response.status === 429) {
+      const error = new Error("FootballData rate limit reached.");
+      error.code = "rate_limit";
+      throw error;
+    }
+
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`FootballData error ${response.status}: ${body}`);
