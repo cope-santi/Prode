@@ -129,6 +129,18 @@ export async function handleAdminGameAdd() {
             return;
         }
     }
+    if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
+        gameMessageDiv.textContent = 'Scores must be non-negative numbers.';
+        gameMessageDiv.style.color = 'red';
+        addGameButton.disabled = false;
+        return;
+    }
+    if ((status === 'finished' || status === 'live') && (homeScore === null || awayScore === null)) {
+        gameMessageDiv.textContent = 'Finished or live games must include both scores.';
+        gameMessageDiv.style.color = 'red';
+        addGameButton.disabled = false;
+        return;
+    }
 
     try {
         const kickOffTime = new Date(kickOffTimeStr);
@@ -227,6 +239,11 @@ function clearAdminForm() {
     if (adminManualOverrideInput) {
         adminManualOverrideInput.checked = false;
     }
+}
+
+function isValidScore(score) {
+    if (score === null) return true;
+    return Number.isFinite(score) && score >= 0;
 }
 
 function updateGroupMatchdayInputs() {
