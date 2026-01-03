@@ -39,13 +39,27 @@ function calculatePoints(prediction, game) {
     return null; // Game not finished or actual scores not available
   }
 
-  const predictedHome = prediction.predictedHomeScore;
-  const predictedAway = prediction.predictedAwayScore;
+  const predictedHomeRaw = prediction.predictedHomeScore;
+  const predictedAwayRaw = prediction.predictedAwayScore;
   const actualHome = homeScore;
   const actualAway = awayScore;
 
-  if (predictedHome === null || predictedAway === null) {
+  if (
+    predictedHomeRaw === null ||
+    predictedAwayRaw === null ||
+    predictedHomeRaw === undefined ||
+    predictedAwayRaw === undefined ||
+    predictedHomeRaw === '' ||
+    predictedAwayRaw === ''
+  ) {
     return 0; // No valid prediction entered for this game
+  }
+
+  const predictedHome = Number(predictedHomeRaw);
+  const predictedAway = Number(predictedAwayRaw);
+
+  if (!Number.isFinite(predictedHome) || !Number.isFinite(predictedAway)) {
+    return 0;
   }
 
   let points = 0;
@@ -362,12 +376,23 @@ function normalizeGame(firestoreGame) {
  * Transforms Firestore prediction data to standard format
  */
 function normalizePrediction(firestorePrediction) {
+  const predictedHomeScore = firestorePrediction.predictedHomeScore;
+  const predictedAwayScore = firestorePrediction.predictedAwayScore;
+  const normalizedHomeScore =
+    predictedHomeScore === null || predictedHomeScore === undefined || predictedHomeScore === ''
+      ? null
+      : Number(predictedHomeScore);
+  const normalizedAwayScore =
+    predictedAwayScore === null || predictedAwayScore === undefined || predictedAwayScore === ''
+      ? null
+      : Number(predictedAwayScore);
+
   return {
     userId: firestorePrediction.userId,
     playerName: firestorePrediction.playerName,
     gameId: firestorePrediction.gameId,
-    predictedHomeScore: firestorePrediction.predictedHomeScore,
-    predictedAwayScore: firestorePrediction.predictedAwayScore,
+    predictedHomeScore: Number.isFinite(normalizedHomeScore) ? normalizedHomeScore : null,
+    predictedAwayScore: Number.isFinite(normalizedAwayScore) ? normalizedAwayScore : null,
     timestamp: firestorePrediction.timestamp?.toDate?.()
       ? firestorePrediction.timestamp.toDate()
       : new Date(firestorePrediction.timestamp)

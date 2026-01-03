@@ -5,8 +5,66 @@
  */
 
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { calculatePoints, calculatePlayerStats, getPlayerStats } from "./calculations.js";
+import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js";
 import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./tournament-config.js";
+
+let cachedTournamentGames = null;
+let cachedGamesMap = null;
+let cachedAllPredictions = null;
+
+async function loadTournamentGames(db) {
+    if (cachedTournamentGames && cachedGamesMap) {
+        return { gamesArray: cachedTournamentGames, gamesMap: cachedGamesMap };
+    }
+
+    const gamesSnapshot = await getDocs(query(
+        collection(db, 'games'),
+        where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+    ));
+
+    const gamesArray = [];
+    const gamesMap = {};
+
+    gamesSnapshot.forEach(doc => {
+        const gameData = {
+            id: doc.id,
+            ...doc.data(),
+            status: (doc.data().Status || '').toLowerCase(),
+            homeScore: doc.data().HomeScore,
+            awayScore: doc.data().AwayScore,
+            stageKey: doc.data().StageKey,
+            stage: doc.data().Stage,
+            group: doc.data().Group,
+            matchday: doc.data().Matchday
+        };
+        gamesArray.push(gameData);
+        gamesMap[doc.id] = gameData;
+    });
+
+    cachedTournamentGames = gamesArray;
+    cachedGamesMap = gamesMap;
+
+    return { gamesArray, gamesMap };
+}
+
+async function loadAllPredictions(db) {
+    if (cachedAllPredictions) {
+        return cachedAllPredictions;
+    }
+
+    const allPredictionsRef = collection(db, 'predictions');
+    const allPredSnapshot = await getDocs(query(
+        allPredictionsRef,
+        where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+    ));
+    const allPredictions = [];
+    allPredSnapshot.forEach(doc => {
+        allPredictions.push(normalizePrediction(doc.data()));
+    });
+
+    cachedAllPredictions = allPredictions;
+    return allPredictions;
+}
 
 /**
  * Create and append player history modal to the DOM if it doesn't exist
@@ -70,58 +128,29 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
 
     const playerName = userDisplayNames[userId] || userId;
     titleEl.textContent = `${playerName} - Prediction History`;
-    contentEl.innerHTML = '<p style="color: #bdbdbd;">Loading predictions...</p>';
+    contentEl.innerHTML = '';
+    const loading = document.createElement('p');
+    loading.style.color = '#bdbdbd';
+    loading.textContent = 'Loading predictions...';
+    contentEl.appendChild(loading);
     modal.style.display = 'block';
 
     try {
-        // Fetch all predictions for this user
-        const predictionsRef = collection(db, 'predictions');
-        const predQuery = query(
-            predictionsRef,
-            where('userId', '==', userId),
-            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-        );
-        const predSnapshot = await getDocs(predQuery);
+        const [allPredictions, tournamentGames] = await Promise.all([
+            loadAllPredictions(db),
+            loadTournamentGames(db)
+        ]);
 
-        const userPredictions = [];
-        predSnapshot.forEach(doc => {
-            userPredictions.push(doc.data());
-        });
+        const { gamesArray, gamesMap } = tournamentGames;
+        const userPredictions = allPredictions.filter(pred => pred.userId === userId);
 
         if (userPredictions.length === 0) {
-            contentEl.innerHTML = '<p style="color: #bdbdbd;">No predictions found for this player.</p>';
+            contentEl.innerHTML = '';
+            const emptyMessage = document.createElement('p');
+            emptyMessage.style.color = '#bdbdbd';
+            emptyMessage.textContent = 'No predictions found for this player.';
+            contentEl.appendChild(emptyMessage);
             return;
-        }
-
-        // Fetch game details for all predictions
-        const gameIds = [...new Set(userPredictions.map(p => p.gameId))];
-        const gamesArray = [];
-        const gamesMap = {};
-
-        for (let i = 0; i < gameIds.length; i += 10) {
-            const batch = gameIds.slice(i, i + 10);
-            const gamesQuery = query(
-                collection(db, 'games'),
-                where('__name__', 'in', batch),
-                where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-            );
-            const gamesSnapshot = await getDocs(gamesQuery);
-            gamesSnapshot.forEach(doc => {
-                const gameData = {
-                    id: doc.id,
-                    ...doc.data(),
-                    // Normalize field names for calculations module
-                    status: (doc.data().Status || '').toLowerCase(),
-                    homeScore: doc.data().HomeScore,
-                    awayScore: doc.data().AwayScore,
-                    stageKey: doc.data().StageKey,
-                    stage: doc.data().Stage,
-                    group: doc.data().Group,
-                    matchday: doc.data().Matchday
-                };
-                gamesArray.push(gameData);
-                gamesMap[doc.id] = gameData;
-            });
         }
 
         // Normalize predictions for calculations module
@@ -139,23 +168,6 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             return timeB - timeA;
         });
 
-        // Fetch ALL predictions to calculate if this user won any fechas
-        const allPredictionsRef = collection(db, 'predictions');
-        const allPredSnapshot = await getDocs(query(
-            allPredictionsRef,
-            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-        ));
-        const allPredictions = [];
-        allPredSnapshot.forEach(doc => {
-            const pred = doc.data();
-            allPredictions.push({
-                ...pred,
-                status: (gamesMap[pred.gameId]?.Status || '').toLowerCase(),
-                homeScore: gamesMap[pred.gameId]?.HomeScore,
-                awayScore: gamesMap[pred.gameId]?.AwayScore
-            });
-        });
-
         // Use centralized calculatePlayerStats to get proper fechas won count
         const allPlayerStats = calculatePlayerStats(gamesArray, allPredictions);
         const playerStats = getPlayerStats(allPlayerStats, userId) || {
@@ -164,26 +176,42 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             fechasWonCount: 0
         };
 
-        // Build stats header with subtle styling
-        let html = '<div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, rgba(0, 229, 255, 0.1) 0%, rgba(118, 255, 3, 0.05) 100%); border-left: 3px solid #00e5ff; border-radius: 4px;">';
-        html += '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">';
-        html += '<div style="text-align: center;">';
-        html += `<div style="font-size: 1.8rem; font-weight: 700; color: #76ff03;">${playerStats.totalPoints}</div>`;
-        html += '<div style="font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Total Points</div>';
-        html += '</div>';
-        html += '<div style="text-align: center;">';
-        html += `<div style="font-size: 1.8rem; font-weight: 700; color: #00e5ff;">${playerStats.perfectScoresCount}</div>`;
-        html += '<div style="font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Perfect Scores</div>';
-        html += '</div>';
-        html += '<div style="text-align: center;">';
-        html += `<div style="font-size: 1.8rem; font-weight: 700; color: #ffeb3b;">${playerStats.fechasWonCount}</div>`;
-        html += '<div style="font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;">Phases Won</div>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+        contentEl.innerHTML = '';
 
-        // Build predictions list
-        html += '<div style="max-height: 500px; overflow-y: auto;">';
+        const statsContainer = document.createElement('div');
+        statsContainer.style.cssText = 'margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, rgba(0, 229, 255, 0.1) 0%, rgba(118, 255, 3, 0.05) 100%); border-left: 3px solid #00e5ff; border-radius: 4px;';
+        const statsGrid = document.createElement('div');
+        statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;';
+        statsContainer.appendChild(statsGrid);
+
+        const statsItems = [
+            { value: playerStats.totalPoints, color: '#76ff03', label: 'Total Points' },
+            { value: playerStats.perfectScoresCount, color: '#00e5ff', label: 'Perfect Scores' },
+            { value: playerStats.fechasWonCount, color: '#ffeb3b', label: 'Phases Won' }
+        ];
+
+        statsItems.forEach(item => {
+            const itemContainer = document.createElement('div');
+            itemContainer.style.textAlign = 'center';
+
+            const valueEl = document.createElement('div');
+            valueEl.style.cssText = `font-size: 1.8rem; font-weight: 700; color: ${item.color};`;
+            valueEl.textContent = String(item.value);
+
+            const labelEl = document.createElement('div');
+            labelEl.style.cssText = 'font-size: 0.75rem; color: #7e8a99; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px;';
+            labelEl.textContent = item.label;
+
+            itemContainer.appendChild(valueEl);
+            itemContainer.appendChild(labelEl);
+            statsGrid.appendChild(itemContainer);
+        });
+
+        contentEl.appendChild(statsContainer);
+
+        const listContainer = document.createElement('div');
+        listContainer.style.cssText = 'max-height: 500px; overflow-y: auto;';
+
         normalizedPredictions.forEach(pred => {
             const game = gamesMap[pred.gameId];
             if (!game) return;
@@ -195,28 +223,63 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             const gameDate = new Date(game.KickOffTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             const phaseLabel = resolveStageLabel(game);
 
-            html += `
-                <div class="prediction-entry">
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; color: #f0f0f0;">${game.HomeTeam} vs ${game.AwayTeam}</div>
-                        <div style="font-size: 0.85rem; color: #9e9e9e; margin-top: 4px;">
-                            <span>Phase: ${phaseLabel}</span>
-                            <span style="margin-left: 8px;">Predicted: ${pred.predictedHomeScore} - ${pred.predictedAwayScore}</span>
-                            ${game.Status === 'finished' && game.HomeScore !== null ? ` | Actual: ${game.HomeScore} - ${game.AwayScore}` : ''}
-                            <span style="margin-left: 8px; font-size: 0.75rem;">${gameDate}</span>
-                        </div>
-                    </div>
-                    <span class="score ${pointsClass}">${pointsDisplay}</span>
-                </div>
-            `;
-        });
-        html += '</div>';
+            const entry = document.createElement('div');
+            entry.className = 'prediction-entry';
 
-        contentEl.innerHTML = html;
+            const details = document.createElement('div');
+            details.style.flex = '1';
+
+            const matchup = document.createElement('div');
+            matchup.style.cssText = 'font-weight: 600; color: #f0f0f0;';
+            matchup.textContent = `${game.HomeTeam} vs ${game.AwayTeam}`;
+
+            const meta = document.createElement('div');
+            meta.style.cssText = 'font-size: 0.85rem; color: #9e9e9e; margin-top: 4px;';
+
+            const phaseSpan = document.createElement('span');
+            phaseSpan.textContent = `Phase: ${phaseLabel}`;
+
+            const predictedSpan = document.createElement('span');
+            predictedSpan.style.marginLeft = '8px';
+            const predictedHome = pred.predictedHomeScore ?? '-';
+            const predictedAway = pred.predictedAwayScore ?? '-';
+            predictedSpan.textContent = `Predicted: ${predictedHome} - ${predictedAway}`;
+
+            meta.appendChild(phaseSpan);
+            meta.appendChild(predictedSpan);
+
+            if (game.Status === 'finished' && game.HomeScore !== null) {
+                const actualSpan = document.createElement('span');
+                actualSpan.textContent = ` | Actual: ${game.HomeScore} - ${game.AwayScore}`;
+                meta.appendChild(actualSpan);
+            }
+
+            const dateSpan = document.createElement('span');
+            dateSpan.style.cssText = 'margin-left: 8px; font-size: 0.75rem;';
+            dateSpan.textContent = gameDate;
+            meta.appendChild(dateSpan);
+
+            details.appendChild(matchup);
+            details.appendChild(meta);
+
+            const scoreBadge = document.createElement('span');
+            scoreBadge.className = `score ${pointsClass}`;
+            scoreBadge.textContent = pointsDisplay;
+
+            entry.appendChild(details);
+            entry.appendChild(scoreBadge);
+
+            listContainer.appendChild(entry);
+        });
+        contentEl.appendChild(listContainer);
 
     } catch (error) {
         console.error("Error loading player history: ", error);
-        contentEl.innerHTML = '<p style="color: #ff6b6b;">Error loading player history. Please try again.</p>';
+        contentEl.innerHTML = '';
+        const errorMessage = document.createElement('p');
+        errorMessage.style.color = '#ff6b6b';
+        errorMessage.textContent = 'Error loading player history. Please try again.';
+        contentEl.appendChild(errorMessage);
     }
 }
 
@@ -231,35 +294,76 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
     const table = document.createElement('table');
     table.classList.add('table', 'table-dark', 'table-striped', 'table-hover');
 
-    let headerHtml = `
-        <thead>
-            <tr>
-                <th scope="col">#</th>
-                <th scope="col">Player</th>
-                <th scope="col">Total Points</th>
-                <th scope="col" class="text-center">Phases Won</th>
-                <th scope="col" class="text-center">Perfect Scores (10s)</th>
-            </tr>
-        </thead>
-    `;
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
 
-    let bodyHtml = '<tbody>';
-    
-    sortedPlayers.forEach(([userId, stats], index) => {
-        bodyHtml += `
-            <tr style="cursor: pointer;" data-user-id="${userId}" title="Click to view prediction history">
-                <th scope="row">${index + 1}</th>
-                <td><strong>${userNames[userId] || 'Anonymous'}</strong></td>
-                <td><span class="badge badge-light badge-pill">${stats.totalPoints}</span></td>
-                <td class="text-center"><span class="badge badge-info">${stats.fechasWonCount}</span></td>
-                <td class="text-center"><span class="badge badge-warning">${stats.perfectScoresCount}</span></td>
-            </tr>
-        `;
+    const headers = [
+        { label: '#', className: '' },
+        { label: 'Player', className: '' },
+        { label: 'Total Points', className: '' },
+        { label: 'Phases Won', className: 'text-center' },
+        { label: 'Perfect Scores (10s)', className: 'text-center' }
+    ];
+
+    headers.forEach(header => {
+        const th = document.createElement('th');
+        th.scope = 'col';
+        th.textContent = header.label;
+        if (header.className) {
+            th.className = header.className;
+        }
+        headerRow.appendChild(th);
     });
-    
-    bodyHtml += '</tbody>';
-    
-    table.innerHTML = headerHtml + bodyHtml;
+    thead.appendChild(headerRow);
+
+    const tbody = document.createElement('tbody');
+
+    sortedPlayers.forEach(([userId, stats], index) => {
+        const row = document.createElement('tr');
+        row.style.cursor = 'pointer';
+        row.dataset.userId = userId;
+        row.title = 'Click to view prediction history';
+
+        const rankCell = document.createElement('th');
+        rankCell.scope = 'row';
+        rankCell.textContent = String(index + 1);
+
+        const playerCell = document.createElement('td');
+        const playerStrong = document.createElement('strong');
+        playerStrong.textContent = userNames[userId] || 'Anonymous';
+        playerCell.appendChild(playerStrong);
+
+        const totalCell = document.createElement('td');
+        const totalBadge = document.createElement('span');
+        totalBadge.className = 'badge badge-light badge-pill';
+        totalBadge.textContent = String(stats.totalPoints);
+        totalCell.appendChild(totalBadge);
+
+        const phasesCell = document.createElement('td');
+        phasesCell.className = 'text-center';
+        const phasesBadge = document.createElement('span');
+        phasesBadge.className = 'badge badge-info';
+        phasesBadge.textContent = String(stats.fechasWonCount);
+        phasesCell.appendChild(phasesBadge);
+
+        const perfectCell = document.createElement('td');
+        perfectCell.className = 'text-center';
+        const perfectBadge = document.createElement('span');
+        perfectBadge.className = 'badge badge-warning';
+        perfectBadge.textContent = String(stats.perfectScoresCount);
+        perfectCell.appendChild(perfectBadge);
+
+        row.appendChild(rankCell);
+        row.appendChild(playerCell);
+        row.appendChild(totalCell);
+        row.appendChild(phasesCell);
+        row.appendChild(perfectCell);
+
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
 
     // Add click handler to table using event delegation
     table.addEventListener('click', (e) => {
