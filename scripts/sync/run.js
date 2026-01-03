@@ -40,16 +40,18 @@ async function run() {
       }
     });
 
-    const batch = db.batch();
+    const maxBatchSize = 450;
+    let batch = db.batch();
+    let batchCount = 0;
     let writeCount = 0;
     let created = 0;
     let updated = 0;
     let skippedManual = 0;
     let skippedUnchanged = 0;
 
-    events.forEach(event => {
+    for (const event of events) {
       const mapped = mapEventToGame(event);
-      if (!mapped.externalMatchId) return;
+      if (!mapped.externalMatchId) continue;
 
       const externalKey = `thesportsdb:${mapped.externalMatchId}`;
       const matchKey = buildMatchKey(mapped.HomeTeam, mapped.AwayTeam, mapped.utcDate);
@@ -59,20 +61,27 @@ async function run() {
         const existingData = existingDoc.data();
         if (existingData.isManuallyEdited) {
           skippedManual += 1;
-          return;
+          continue;
         }
 
         const updatePayload = buildPayload(mapped, config, now, false);
         const sanitized = sanitizePayload(updatePayload, existingData);
         if (!hasChanges(sanitized, existingData)) {
           skippedUnchanged += 1;
-          return;
+          continue;
         }
 
         batch.set(existingDoc.ref, sanitized, { merge: true });
         writeCount += 1;
         updated += 1;
-        return;
+        batchCount += 1;
+
+        if (batchCount >= maxBatchSize) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+        }
+        continue;
       }
 
       const docId = `thesportsdb_${mapped.externalMatchId}`;
@@ -82,9 +91,16 @@ async function run() {
       batch.set(docRef, sanitizedCreate, { merge: true });
       writeCount += 1;
       created += 1;
-    });
+      batchCount += 1;
 
-    if (writeCount > 0) {
+      if (batchCount >= maxBatchSize) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    }
+
+    if (writeCount > 0 && batchCount > 0) {
       await batch.commit();
     }
 
