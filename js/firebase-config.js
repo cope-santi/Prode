@@ -10,12 +10,12 @@
  */
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyDiXK6wk760_u0L-wQVjM2ekw2pr74byrc",
-  authDomain: "mundial2026-9d7da.firebaseapp.com",
-  projectId: "mundial2026-9d7da",
-  storageBucket: "mundial2026-9d7da.firebasestorage.app",
-  messagingSenderId: "909132807014",
-  appId: "1:909132807014:web:e837af32356a105891a6a7"
+  apiKey: "AIzaSyA6TsBSUUeL36WQ_m2wo_XhP8iwDaY0cFg",
+  authDomain: "prode-mundial-2026-edmonton.firebaseapp.com",
+  projectId: "prode-mundial-2026-edmonton",
+  storageBucket: "prode-mundial-2026-edmonton.firebasestorage.app",
+  messagingSenderId: "589928696658",
+  appId: "1:589928696658:web:ea076e1ae37b22973b888b"
 };
 
 // Import firebaseConfig in your modules and initialize Firebase there.

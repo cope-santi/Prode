@@ -182,7 +182,21 @@
                     </div>
 
                     <div class="text-center">
-                        <button id="addGameButton" class="btn btn-primary-custom btn-lg">Add Game</button>
+                        <button id="addGameButton" type="button" class="btn btn-primary-custom btn-lg">Add Game</button>
+                    </div>
+                    <hr class="my-4">
+                    <h4 class="mb-3">Edit Existing Game</h4>
+                    <div class="form-group mb-3">
+                        <label for="adminGameSelect">Select game:</label>
+                        <select id="adminGameSelect" class="form-control"></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <button id="loadGameButton" type="button" class="btn btn-outline-info btn-block">Load Selected Game</button>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <button id="updateGameButton" type="button" class="btn btn-warning btn-block">Update Game</button>
+                        </div>
                     </div>
                     <p id="gameMessage" class="mt-3 text-center"></p>
                 </div>
@@ -205,7 +219,8 @@
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
         // Import admin panel module
-        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist } from "./js/admin-panel.js";
+        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js";
+        import { TOURNAMENT_CONFIG } from "./js/tournament-config.js";
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -216,7 +231,7 @@
         console.log("Current auth user:", auth.currentUser ? auth.currentUser.email : "Not signed in");
 
         // Initialize admin panel module
-        initializeAdminPanel(db, addDoc, collection);
+        initializeAdminPanel(db, addDoc, collection, updateDoc, doc);
 
         // DOM References for Auth
         const loginRegisterFormDiv = document.getElementById('login-register-form');
@@ -236,7 +251,7 @@
         let currentUserEmail = null;
         let allTeams = [];
         // ADMIN_UID - Must match the value in index.html
-        const ADMIN_UID = 'NGUEFdFJB8cKZdSU6MHojOSzlkA2'; // Same UID as in index.html
+        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3'; // Same UID as in index.html
 
         /**
          * Initialize admin dropdowns - Fetch teams from Firestore
@@ -262,6 +277,18 @@
                     console.log("Calling populateTeamDatalist with team names:", allTeams.map(t => t.name));
                     populateTeamDatalist(allTeams.map(t => t.name));
                     console.log("Team datalist populated successfully");
+
+                    const gamesRef = collection(db, 'games');
+                    const gamesSnapshot = await getDocs(query(
+                        gamesRef,
+                        where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId),
+                        orderBy('KickOffTime', 'asc')
+                    ));
+                    const games = [];
+                    gamesSnapshot.forEach(docSnapshot => {
+                        games.push({ id: docSnapshot.id, ...docSnapshot.data() });
+                    });
+                    populateAdminGameSelect(games);
                 } catch (dropdownError) {
                     console.error("Error populating admin dropdowns:", dropdownError);
                 }
@@ -371,6 +398,10 @@
         // Listen for admin game addition events and refresh dropdowns
         window.addEventListener('adminGameAdded', async () => {
             console.log("Admin game added event received, refreshing dropdowns...");
+            await initializeAdminDropdowns();
+        });
+        window.addEventListener('adminGameUpdated', async () => {
+            console.log("Admin game updated event received, refreshing dropdowns...");
             await initializeAdminDropdowns();
         });
 
