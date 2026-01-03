@@ -26,6 +26,9 @@ let adminHomeScoreInput;
 let adminAwayScoreInput;
 let adminManualOverrideInput;
 let addGameButton;
+let updateGameButton;
+let loadGameButton;
+let adminGameSelect;
 let gameMessageDiv;
 // Fixture search removed for single-tournament scope
 
@@ -33,6 +36,10 @@ let gameMessageDiv;
 let db;
 let addDocFunction;
 let collectionFunction;
+let updateDocFunction;
+let docFunction;
+let selectedGameId = null;
+let gamesById = new Map();
 
 /**
  * Initialize admin panel by getting all DOM references
@@ -40,10 +47,12 @@ let collectionFunction;
  * @param {function} addDoc - Firestore addDoc function
  * @param {function} collection - Firestore collection function
  */
-export function initializeAdminPanel(database, addDoc, collection) {
+export function initializeAdminPanel(database, addDoc, collection, updateDoc, doc) {
     db = database;
     addDocFunction = addDoc;
     collectionFunction = collection;
+    updateDocFunction = updateDoc;
+    docFunction = doc;
     
     // Debug logging (ASCII-only to avoid encoding issues)
     console.log("Admin panel initialized with:");
@@ -64,11 +73,20 @@ export function initializeAdminPanel(database, addDoc, collection) {
     adminAwayScoreInput = document.getElementById('adminAwayScore');
     adminManualOverrideInput = document.getElementById('adminManualOverride');
     addGameButton = document.getElementById('addGameButton');
+    updateGameButton = document.getElementById('updateGameButton');
+    loadGameButton = document.getElementById('loadGameButton');
+    adminGameSelect = document.getElementById('adminGameSelect');
     gameMessageDiv = document.getElementById('gameMessage');
     
     // Attach event listeners
     if (addGameButton) {
         addGameButton.addEventListener('click', handleAdminGameAdd);
+    }
+    if (updateGameButton) {
+        updateGameButton.addEventListener('click', handleAdminGameUpdate);
+    }
+    if (loadGameButton) {
+        loadGameButton.addEventListener('click', handleAdminGameLoad);
     }
     if (adminStageSelect) {
         adminStageSelect.addEventListener('change', updateGroupMatchdayInputs);
@@ -128,6 +146,18 @@ export async function handleAdminGameAdd() {
             addGameButton.disabled = false;
             return;
         }
+    }
+    if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
+        gameMessageDiv.textContent = 'Scores must be non-negative numbers.';
+        gameMessageDiv.style.color = 'red';
+        addGameButton.disabled = false;
+        return;
+    }
+    if ((status === 'finished' || status === 'live') && (homeScore === null || awayScore === null)) {
+        gameMessageDiv.textContent = 'Finished or live games must include both scores.';
+        gameMessageDiv.style.color = 'red';
+        addGameButton.disabled = false;
+        return;
     }
 
     try {
@@ -206,6 +236,177 @@ export async function handleAdminGameAdd() {
     }
 }
 
+export function populateAdminGameSelect(games) {
+    if (!adminGameSelect) return;
+    adminGameSelect.innerHTML = '';
+    gamesById = new Map();
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select game to edit';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    adminGameSelect.appendChild(defaultOption);
+
+    games.forEach(game => {
+        const option = document.createElement('option');
+        option.value = game.id;
+        const kickOff = game.KickOffTime ? new Date(game.KickOffTime).toLocaleString() : 'TBD';
+        option.textContent = `${game.HomeTeam} vs ${game.AwayTeam} (${kickOff})`;
+        adminGameSelect.appendChild(option);
+        gamesById.set(game.id, game);
+    });
+}
+
+function handleAdminGameLoad() {
+    if (!adminGameSelect) return;
+    const gameId = adminGameSelect.value;
+    if (!gameId) return;
+    const game = gamesById.get(gameId);
+    if (!game) return;
+    loadGameIntoForm(game);
+}
+
+export function loadGameIntoForm(game) {
+    if (!game) return;
+    selectedGameId = game.id;
+    if (adminHomeTeamInput) adminHomeTeamInput.value = game.HomeTeam || '';
+    if (adminAwayTeamInput) adminAwayTeamInput.value = game.AwayTeam || '';
+    if (adminStageSelect) adminStageSelect.value = game.Stage || '';
+    updateGroupMatchdayInputs();
+    if (adminGroupSelect) adminGroupSelect.value = game.Group || '';
+    if (adminMatchdaySelect) adminMatchdaySelect.value = game.Matchday || '';
+    if (adminKickOffTimeInput && game.KickOffTime) {
+        const kickoff = new Date(game.KickOffTime);
+        const isoString = new Date(kickoff.getTime() - (kickoff.getTimezoneOffset() * 60000)).toISOString().slice(0, -8);
+        adminKickOffTimeInput.value = isoString;
+    }
+    if (adminStatusSelect) adminStatusSelect.value = game.Status || 'upcoming';
+    if (adminHomeScoreInput) adminHomeScoreInput.value = game.HomeScore ?? '';
+    if (adminAwayScoreInput) adminAwayScoreInput.value = game.AwayScore ?? '';
+    if (adminManualOverrideInput) adminManualOverrideInput.checked = !!game.isManuallyEdited;
+}
+
+export async function handleAdminGameUpdate() {
+    if (!selectedGameId) {
+        gameMessageDiv.textContent = 'Select a game to update first.';
+        gameMessageDiv.style.color = 'red';
+        return;
+    }
+
+    gameMessageDiv.textContent = 'Updating game...';
+    gameMessageDiv.style.color = 'orange';
+    updateGameButton.disabled = true;
+
+    const homeTeam = adminHomeTeamInput.value.trim();
+    const awayTeam = adminAwayTeamInput.value.trim();
+    const stage = adminStageSelect.value;
+    const group = adminGroupSelect.value || null;
+    const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
+    const kickOffTimeStr = adminKickOffTimeInput.value;
+    const status = adminStatusSelect.value;
+    const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
+    const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
+    const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
+    const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
+
+    if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
+        gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
+        gameMessageDiv.style.color = 'red';
+        updateGameButton.disabled = false;
+        return;
+    }
+    if (homeTeam === awayTeam) {
+        gameMessageDiv.textContent = 'Home Team and Away Team cannot be the same.';
+        gameMessageDiv.style.color = 'red';
+        updateGameButton.disabled = false;
+        return;
+    }
+    if (isGroupStage(stage)) {
+        if (!group || !matchday) {
+            gameMessageDiv.textContent = 'Please select a Group and Matchday for Group Stage matches.';
+            gameMessageDiv.style.color = 'orange';
+            updateGameButton.disabled = false;
+            return;
+        }
+    }
+    if (!isValidScore(homeScore) || !isValidScore(awayScore)) {
+        gameMessageDiv.textContent = 'Scores must be non-negative numbers.';
+        gameMessageDiv.style.color = 'red';
+        updateGameButton.disabled = false;
+        return;
+    }
+    if ((status === 'finished' || status === 'live') && (homeScore === null || awayScore === null)) {
+        gameMessageDiv.textContent = 'Finished or live games must include both scores.';
+        gameMessageDiv.style.color = 'red';
+        updateGameButton.disabled = false;
+        return;
+    }
+
+    try {
+        const kickOffTime = new Date(kickOffTimeStr);
+        if (isNaN(kickOffTime.getTime())) {
+            gameMessageDiv.textContent = 'Invalid Kick-off Time.';
+            gameMessageDiv.style.color = 'red';
+            updateGameButton.disabled = false;
+            return;
+        }
+
+        const stageKey = buildStageKey({ stage, group, matchday });
+        const gameData = {
+            HomeTeam: homeTeam,
+            AwayTeam: awayTeam,
+            KickOffTime: kickOffTime.toISOString(),
+            utcDate: kickOffTime.toISOString(),
+            Status: status,
+            status: externalStatus,
+            Stage: stage,
+            Group: group,
+            Matchday: matchday,
+            StageKey: stageKey,
+            isManuallyEdited: isManuallyEdited,
+            syncStatus: 'manual',
+            syncError: null
+        };
+
+        if (status === 'finished' || status === 'live') {
+            gameData.HomeScore = homeScore;
+            gameData.AwayScore = awayScore;
+            gameData.score = {
+                home: homeScore,
+                away: awayScore,
+                fullTime: {
+                    home: homeScore,
+                    away: awayScore
+                },
+                halfTime: {
+                    home: null,
+                    away: null
+                }
+            };
+        } else {
+            gameData.HomeScore = null;
+            gameData.AwayScore = null;
+            gameData.score = null;
+        }
+
+        if (!updateDocFunction || !docFunction) {
+            throw new Error("Firestore functions not initialized. This is a bug in the initialization code.");
+        }
+
+        await updateDocFunction(docFunction(db, 'games', selectedGameId), gameData);
+        gameMessageDiv.textContent = 'Game updated successfully!';
+        gameMessageDiv.style.color = 'green';
+        window.dispatchEvent(new Event('adminGameUpdated'));
+    } catch (error) {
+        console.error("Error updating game: ", error);
+        gameMessageDiv.textContent = `Error updating game: ${error.message}`;
+        gameMessageDiv.style.color = 'red';
+    } finally {
+        updateGameButton.disabled = false;
+    }
+}
+
 /**
  * Clear the admin form
  */
@@ -227,6 +428,12 @@ function clearAdminForm() {
     if (adminManualOverrideInput) {
         adminManualOverrideInput.checked = false;
     }
+    selectedGameId = null;
+}
+
+function isValidScore(score) {
+    if (score === null) return true;
+    return Number.isFinite(score) && score >= 0;
 }
 
 function updateGroupMatchdayInputs() {
