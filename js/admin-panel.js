@@ -311,6 +311,8 @@ export async function handleAdminGameUpdate() {
     const group = adminGroupSelect.value || null;
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
+    const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
+    const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
     let status = adminStatusSelect.value;
     const hasScores = homeScore !== null && awayScore !== null;
     if (status === 'upcoming' && hasScores) {
@@ -320,8 +322,6 @@ export async function handleAdminGameUpdate() {
         }
     }
     const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
-    const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
-    const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
     const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
 
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
