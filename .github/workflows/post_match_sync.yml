@@ -29,6 +29,7 @@ jobs:
           THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }}
           THESPORTSDB_LEAGUE_ID: ${{ secrets.THESPORTSDB_LEAGUE_ID }}
           THESPORTSDB_SEASON: ${{ secrets.THESPORTSDB_SEASON }}
+          THESPORTSDB_ROUNDS: ${{ secrets.THESPORTSDB_ROUNDS }}
           TOURNAMENT_ID: ${{ secrets.TOURNAMENT_ID }}
           LOOKBACK_DAYS: ${{ secrets.LOOKBACK_DAYS }}
           POST_MATCH_SYNC_MINUTES: ${{ secrets.POST_MATCH_SYNC_MINUTES }}

@@ -146,6 +146,7 @@ function loadConfig() {
     apiKey: process.env.THESPORTSDB_API_KEY,
     leagueId: process.env.THESPORTSDB_LEAGUE_ID,
     season: process.env.THESPORTSDB_SEASON || "",
+    rounds: parseRounds(process.env.THESPORTSDB_ROUNDS),
     tournamentId: process.env.TOURNAMENT_ID,
     lookbackDays: parseInt(process.env.LOOKBACK_DAYS || "2", 10),
     cacheTtlMs: parseInt(process.env.PROVIDER_CACHE_TTL_MS || "20000", 10),
@@ -182,7 +183,27 @@ async function fetchSeasonEvents(config) {
   return fetchWithCache(url, "season", config.cacheTtlMs);
 }
 
+async function fetchRoundEvents(config, round) {
+  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
+  const season = String(config.season || "").trim();
+  const roundParam = String(round || "").trim();
+  const url = `${baseUrl}/${config.apiKey}/eventsround.php?id=${config.leagueId}&s=${encodeURIComponent(season)}&r=${encodeURIComponent(roundParam)}`;
+  return fetchWithCache(url, `round_${roundParam}`, config.cacheTtlMs);
+}
+
 async function loadEvents(config) {
+  if (Array.isArray(config.rounds) && config.rounds.length > 0) {
+    if (!config.season) {
+      console.warn("THESPORTSDB_SEASON is required when using THESPORTSDB_ROUNDS.");
+    }
+    const roundEvents = [];
+    for (const round of config.rounds) {
+      const events = await fetchRoundEvents(config, round);
+      roundEvents.push(...events);
+    }
+    return mergeEvents(roundEvents, []);
+  }
+
   if (config.season) {
     const seasonEvents = await fetchSeasonEvents(config);
     if (seasonEvents.length > 0) {
@@ -195,6 +216,14 @@ async function loadEvents(config) {
   const nextEvents = await fetchEvents(config, "eventsnextleague.php", "next");
   const filteredPast = filterPastEvents(pastEvents, config.lookbackDays);
   return mergeEvents(filteredPast, nextEvents);
+}
+
+function parseRounds(value) {
+  if (!value) return [];
+  return String(value)
+    .split(",")
+    .map(item => item.trim())
+    .filter(Boolean);
 }
 
 async function fetchWithCache(url, cacheKey, cacheTtlMs) {

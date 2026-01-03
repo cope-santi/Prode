@@ -242,6 +242,69 @@
         let currentUserId = null; // To store the authenticated user's ID
         let currentUserEmail = null; // To store the authenticated user's email
         let allTeams = [];
+        let stageUnlocks = {};
+
+        const STAGE_ORDER = ['GROUP', 'R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
+        const STAGE_PREREQ = {
+            R32: 'GROUP',
+            R16: 'R32',
+            QF: 'R16',
+            SF: 'QF',
+            '3P': 'SF',
+            FINAL: 'SF'
+        };
+
+        function getStageIdFromGame(game) {
+            const stageKey = resolveStageKey(game);
+            if (stageKey) {
+                return stageKey.startsWith('GROUP-') ? 'GROUP' : stageKey;
+            }
+            return game.Stage || game.stage || null;
+        }
+
+        function buildStageState(games) {
+            const state = {};
+            STAGE_ORDER.forEach(stage => {
+                state[stage] = { hasGames: false, allFinished: true };
+            });
+
+            games.forEach(game => {
+                const stageId = getStageIdFromGame(game);
+                if (!stageId || !state[stageId]) return;
+                state[stageId].hasGames = true;
+                const status = (game.Status || game.status || '').toLowerCase();
+                if (status !== 'finished') {
+                    state[stageId].allFinished = false;
+                }
+            });
+
+            STAGE_ORDER.forEach(stage => {
+                if (!state[stage].hasGames) {
+                    state[stage].allFinished = false;
+                }
+            });
+
+            return state;
+        }
+
+        function buildStageUnlocks(stageState) {
+            return {
+                GROUP: true,
+                R32: stageState.GROUP.allFinished,
+                R16: stageState.R32.allFinished,
+                QF: stageState.R16.allFinished,
+                SF: stageState.QF.allFinished,
+                '3P': stageState.SF.allFinished,
+                FINAL: stageState.SF.allFinished
+            };
+        }
+
+        function getLockMessage(stageId) {
+            const prereq = STAGE_PREREQ[stageId];
+            if (!prereq) return 'Locked until previous phase is finished.';
+            const label = resolveStageLabel({ StageKey: prereq });
+            return `Locked until ${label} is finished.`;
+        }
 
         // --- UI Element References ---
         const playerNameInput = document.getElementById('playerName');
@@ -277,7 +340,8 @@
             submitPredictionsButton.disabled = !enabled;
             // Also disable/enable prediction score inputs
             document.querySelectorAll('#prediction-form-games input[type="number"]').forEach(input => {
-                input.disabled = !enabled;
+                const locked = input.dataset.locked === 'true';
+                input.disabled = !enabled || locked;
             });
         }
 
@@ -441,11 +505,23 @@
 
                 predictionFormGamesDiv.innerHTML = '';
                 gamesForPrediction = [];
+                const allGames = [];
 
                 snapshot.forEach(doc => {
                     const game = doc.data();
                     const gameId = doc.id;
+                    allGames.push({ id: gameId, ...game });
+                });
+
+                const stageState = buildStageState(allGames);
+                stageUnlocks = buildStageUnlocks(stageState);
+
+                allGames.forEach(game => {
+                    const gameId = game.id;
                     const stageLabel = resolveStageLabel(game);
+                    const stageId = getStageIdFromGame(game);
+                    const isLocked = stageId && stageUnlocks.hasOwnProperty(stageId) ? !stageUnlocks[stageId] : false;
+                    const lockMessage = isLocked ? getLockMessage(stageId) : '';
 
                     const homeTeamLogo = teamLogoMap.get(game.HomeTeam) || 'path/to/default_logo.png';
                     const awayTeamLogo = teamLogoMap.get(game.AwayTeam) || 'path/to/default_logo.png';
@@ -454,7 +530,13 @@
                     if (game.Status && game.Status.toLowerCase() === 'upcoming') {
                         const predictionGameCard = document.createElement('div');
                         predictionGameCard.classList.add('app-card', 'prediction-game-card');
-                        
+                        if (isLocked) {
+                            predictionGameCard.style.opacity = '0.7';
+                        }
+
+                        const disabledAttr = isLocked ? 'disabled data-locked="true"' : '';
+                        const lockNotice = isLocked ? `<p class="text-warning" style="margin-top: 8px; font-size: 0.9rem;">${lockMessage}</p>` : '';
+
                         predictionGameCard.innerHTML = `
                             <div class="teams-row">
                                 <div class="team">
@@ -469,13 +551,14 @@
                             </div>
                             <p class="game-detail-line"><strong>Phase:</strong> ${stageLabel}</p>       
                             <div class="prediction-inputs">
-                                <input type="number" data-game-id="${gameId}" data-team="home" placeholder="H" min="0" class="score-input">
+                                <input type="number" data-game-id="${gameId}" data-team="home" placeholder="H" min="0" class="score-input" ${disabledAttr}>
                                 <span class="score-separator">-</span>
-                                <input type="number" data-game-id="${gameId}" data-team="away" placeholder="A" min="0" class="score-input">
+                                <input type="number" data-game-id="${gameId}" data-team="away" placeholder="A" min="0" class="score-input" ${disabledAttr}>
                             </div>                     
+                            ${lockNotice}
                         `;
                         predictionFormGamesDiv.appendChild(predictionGameCard);
-                        gamesForPrediction.push({ id: gameId, ...game });
+                        gamesForPrediction.push({ id: gameId, ...game, isLocked });
                     }
                 });
                 gamesForPrediction.sort((a, b) => {
@@ -488,7 +571,8 @@
                     setPredictionFormEnabled(false);
                     predictionFormGamesDiv.innerHTML = '<p>No upcoming games to predict.</p>';
                 } else {
-                    setPredictionFormEnabled(!!currentUserId);
+                    const hasUnlockedGames = gamesForPrediction.some(game => !game.isLocked);
+                    setPredictionFormEnabled(!!currentUserId && hasUnlockedGames);
                 }
 
             } catch (error) {
@@ -546,6 +630,10 @@
                     const gameInfo = gamesForPrediction.find(g => g.id === gameId);
                     if (!gameInfo) {
                         console.warn(`Skipping prediction for game ${gameId}: game info not found.`);
+                        continue;
+                    }
+                    if (gameInfo.isLocked) {
+                        console.warn(`Skipping prediction for game ${gameId}: phase is locked.`);
                         continue;
                     }
                     if (gameInfo.Status && gameInfo.Status.toLowerCase() !== 'upcoming') {

@@ -13,9 +13,14 @@ function mapEventToGame(event) {
   const status = mapSportsDbStatus(event.strStatus);
   const legacyStatus = status === "FINISHED" ? "finished" : "upcoming";
   const score = status === "FINISHED" ? buildScore(event) : null;
-  const stage = mapRoundToStage(event.strRound || event.strEvent);
-  const group = extractGroup(event.strGroup || event.strRound || event.strEvent);
-  const matchday = parseMatchday(event.intRound, event.strRound || event.strEvent);
+  const roundText = event.strRound || event.strEvent;
+  let stage = mapRoundToStage(roundText, event.intRound);
+  const rawGroup = extractGroup(event.strGroup || roundText);
+  if (!stage && rawGroup) {
+    stage = "GROUP";
+  }
+  const group = stage === "GROUP" ? rawGroup : null;
+  const matchday = parseMatchday(stage, event.intRound, roundText);
   const stageKey = buildStageKey({ stage, group, matchday });
   const utcDate = parseSportsDbUtcDate(event);
 
@@ -65,7 +70,18 @@ function parseScore(value) {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function mapRoundToStage(text) {
+function mapRoundToStage(text, roundNumber) {
+  const roundNum = parseInt(roundNumber, 10);
+  if (!Number.isNaN(roundNum)) {
+    if (roundNum >= 1 && roundNum <= 3) return "GROUP";
+    if (roundNum === 32) return "R32";
+    if (roundNum === 16) return "R16";
+    if (roundNum === 8 || roundNum === 125) return "QF";
+    if (roundNum === 4 || roundNum === 150) return "SF";
+    if (roundNum === 160) return "3P";
+    if (roundNum === 200) return "FINAL";
+  }
+
   const normalized = String(text || "").toLowerCase();
   if (normalized.includes("round of 32") || normalized.includes("last 32")) return "R32";
   if (normalized.includes("round of 16") || normalized.includes("last 16")) return "R16";
@@ -85,15 +101,17 @@ function extractGroup(value) {
   return null;
 }
 
-function parseMatchday(intRound, roundText) {
+function parseMatchday(stage, intRound, roundText) {
+  if (stage !== "GROUP") return null;
   const roundNum = parseInt(intRound, 10);
-  if (!Number.isNaN(roundNum) && roundNum > 0) {
+  if (!Number.isNaN(roundNum) && roundNum >= 1 && roundNum <= 3) {
     return roundNum;
   }
-  const match = String(roundText || "").match(/(\d+)/);
+  const match = String(roundText || "").match(/(?:matchday|round)\s*(\d+)/i) || String(roundText || "").match(/(\d+)/);
   if (match) {
     const parsed = parseInt(match[1], 10);
-    return Number.isNaN(parsed) ? null : parsed;
+    if (Number.isNaN(parsed)) return null;
+    return parsed >= 1 && parsed <= 3 ? parsed : null;
   }
   return null;
 }
