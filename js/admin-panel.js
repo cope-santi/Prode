@@ -121,7 +121,14 @@ export async function handleAdminGameAdd() {
     const group = adminGroupSelect.value || null;
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
-    const status = adminStatusSelect.value;
+    let status = adminStatusSelect.value;
+    const hasScores = homeScore !== null && awayScore !== null;
+    if (status === 'upcoming' && hasScores) {
+        status = 'finished';
+        if (adminStatusSelect) {
+            adminStatusSelect.value = status;
+        }
+    }
     const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
     const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
@@ -304,7 +311,14 @@ export async function handleAdminGameUpdate() {
     const group = adminGroupSelect.value || null;
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
-    const status = adminStatusSelect.value;
+    let status = adminStatusSelect.value;
+    const hasScores = homeScore !== null && awayScore !== null;
+    if (status === 'upcoming' && hasScores) {
+        status = 'finished';
+        if (adminStatusSelect) {
+            adminStatusSelect.value = status;
+        }
+    }
     const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
     const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
