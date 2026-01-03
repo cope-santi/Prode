@@ -16,11 +16,7 @@ async function run() {
 
   const now = admin.firestore.Timestamp.now();
   try {
-    const pastEvents = await fetchEvents(config, "eventspastleague.php", "past");
-    const nextEvents = await fetchEvents(config, "eventsnextleague.php", "next");
-
-    const filteredPast = filterPastEvents(pastEvents, config.lookbackDays);
-    const events = mergeEvents(filteredPast, nextEvents);
+    const events = await loadEvents(config);
 
     const snapshot = await db
       .collection("games")
@@ -177,6 +173,28 @@ async function fetchEvents(config, endpoint, cacheKey) {
   const baseUrl = "https://www.thesportsdb.com/api/v1/json";
   const url = `${baseUrl}/${config.apiKey}/${endpoint}?id=${config.leagueId}`;
   return fetchWithCache(url, cacheKey, config.cacheTtlMs);
+}
+
+async function fetchSeasonEvents(config) {
+  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
+  const season = String(config.season || "").trim();
+  const url = `${baseUrl}/${config.apiKey}/eventsseason.php?id=${config.leagueId}&s=${encodeURIComponent(season)}`;
+  return fetchWithCache(url, "season", config.cacheTtlMs);
+}
+
+async function loadEvents(config) {
+  if (config.season) {
+    const seasonEvents = await fetchSeasonEvents(config);
+    if (seasonEvents.length > 0) {
+      return seasonEvents;
+    }
+    console.warn("No season events returned. Falling back to past/next endpoints.");
+  }
+
+  const pastEvents = await fetchEvents(config, "eventspastleague.php", "past");
+  const nextEvents = await fetchEvents(config, "eventsnextleague.php", "next");
+  const filteredPast = filterPastEvents(pastEvents, config.lookbackDays);
+  return mergeEvents(filteredPast, nextEvents);
 }
 
 async function fetchWithCache(url, cacheKey, cacheTtlMs) {
