@@ -76,7 +76,7 @@
                                         <a href="#" id="forgotPasswordLink" class="text-muted small">Forgot Password?</a>
                                     </div>
                                 </div>
-                                <button id="signInButton" class="btn btn-success">Sign In</button>
+                                <button id="signInButton" type="button" class="btn btn-success">Sign In</button>
                                 <p id="auth-message" class="text-danger mt-3" style="font-weight: bold;"></p>
                             </div>
                         </div>
@@ -301,7 +301,8 @@
         /**
          * Handle Sign In
          */
-        signInButton.addEventListener('click', async () => {
+        signInButton.addEventListener('click', async (event) => {
+            event.preventDefault();
             const email = userEmailInput.value.trim();
             const password = userPasswordInput.value.trim();
 
@@ -311,6 +312,8 @@
             }
 
             try {
+                authMessageDiv.textContent = 'Signing in...';
+                authMessageDiv.style.color = 'inherit';
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 console.log('User signed in:', userCredential.user.email);
             } catch (error) {

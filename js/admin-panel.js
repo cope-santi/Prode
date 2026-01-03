@@ -436,11 +436,6 @@ function isValidScore(score) {
     return Number.isFinite(score) && score >= 0;
 }
 
-function isValidScore(score) {
-    if (score === null) return true;
-    return Number.isFinite(score) && score >= 0;
-}
-
 function updateGroupMatchdayInputs() {
     if (!adminStageSelect || !adminGroupSelect || !adminMatchdaySelect) return;
 
