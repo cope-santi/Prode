@@ -206,6 +206,7 @@ export async function handleAdminGameAdd() {
     }
 }
 
+/**
  * Clear the admin form
  */
 function clearAdminForm() {

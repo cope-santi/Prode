@@ -6,12 +6,21 @@ const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fet
 
 // --- Configuration ---
 // IMPORTANT: Replace with the actual path to your downloaded service account key
-const SERVICE_ACCOUNT_KEY_PATH = './serviceAccountKey.json'; // Ensure this matches your file name
-const serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH);
+const SERVICE_ACCOUNT_KEY_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_PATH || './serviceAccountKey.json';
+let serviceAccount = null;
+try {
+    serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH);
+} catch (error) {
+    console.error(`Error loading service account key at ${SERVICE_ACCOUNT_KEY_PATH}:`, error.message);
+    process.exit(1);
+}
 
 // TheSportsDB API Configuration
-const THESPORTSDB_API_KEY = '123'; // Your free API key from TheSportsDB
+const THESPORTSDB_API_KEY = process.env.THESPORTSDB_API_KEY || '123';
 const THESPORTSDB_BASE_URL = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_API_KEY}`;
+if (!THESPORTSDB_API_KEY || THESPORTSDB_API_KEY === '123') {
+    console.warn('[uploadLogos] THESPORTSDB_API_KEY is not set. Update the env var or edit the file.');
+}
 
 // Firestore Collection Names
 const TEAMS_COLLECTION_NAME = 'teams';
@@ -204,7 +213,7 @@ const teamsData = [
 // --- Initialize Firebase Admin SDK ---
 try {
     admin.initializeApp({
-        credential: admin.credential.cert(SERVICE_ACCOUNT_KEY_PATH),
+        credential: admin.credential.cert(serviceAccount),
     });
     console.log("Firebase Admin SDK initialized successfully.");
 } catch (error) {
@@ -266,10 +275,6 @@ async function uploadLogosToFirestore() {
     }
   }
   console.log('All logos uploaded.');
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 uploadLogosToFirestore();

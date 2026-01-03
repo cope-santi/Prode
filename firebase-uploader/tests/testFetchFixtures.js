@@ -12,11 +12,11 @@
  *   node testFetchFixtures.js
  */
 
-import { 
-    searchTeam, 
+const {
+    searchTeam,
     searchFixture,
-    logFixtureDetails 
-} from '../src/fetchFixtures.js';
+    logFixtureDetails
+} = require('../src/fetchFixtures.js');
 
 // ============================================
 // TEST UTILITIES

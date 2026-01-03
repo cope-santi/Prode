@@ -221,7 +221,7 @@
     <script type="module">
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, getDoc, addDoc, query, orderBy, limit, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, setDoc, deleteDoc, query, orderBy, limit, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         // Import Authentication functions
         import { getAuth, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
@@ -543,6 +543,24 @@
                 if (predictions.hasOwnProperty(gameId)) {
                     const prediction = predictions[gameId];
 
+                    const gameInfo = gamesForPrediction.find(g => g.id === gameId);
+                    if (!gameInfo) {
+                        console.warn(`Skipping prediction for game ${gameId}: game info not found.`);
+                        continue;
+                    }
+                    if (gameInfo.Status && gameInfo.Status.toLowerCase() !== 'upcoming') {
+                        console.warn(`Skipping prediction for game ${gameId} (status is ${gameInfo.Status}).`);
+                        continue;
+                    }
+                    if (gameInfo.KickOffTime) {
+                        const kickOffValue = gameInfo.KickOffTime.toDate ? gameInfo.KickOffTime.toDate() : gameInfo.KickOffTime;
+                        const kickOffMillis = new Date(kickOffValue).getTime();
+                        if (!Number.isNaN(kickOffMillis) && kickOffMillis <= Date.now()) {
+                            console.warn(`Skipping prediction for game ${gameId}: kickoff already passed.`);
+                            continue;
+                        }
+                    }
+
                     if (prediction.predictedHomeScore === null || prediction.predictedAwayScore === null) {
                         console.warn(`Skipping prediction for game ${gameId} by ${playerName}: Incomplete scores.`);
                         continue;
@@ -568,15 +586,23 @@
                             timestamp: new Date() // Update timestamp on every submission
                         };
 
-                        if (!existingPredictionsSnapshot.empty) {
-                            // Prediction already exists, so update it
-                            const existingDoc = existingPredictionsSnapshot.docs[0]; // Get the first (and should be only) doc
-                            await updateDoc(doc(db, 'predictions', existingDoc.id), predictionData);
-                            console.log(`Updated prediction for game ${gameId} by ${playerName} (Doc ID: ${existingDoc.id})`);
-                        } else {
-                            // No existing prediction, so add a new one
-                            await addDoc(predictionsRef, predictionData);
-                            console.log(`Added new prediction for game ${gameId} by ${playerName}`);
+                        const predictionDocId = `${currentUserId}_${gameId}`;
+                        const predictionDocRef = doc(db, 'predictions', predictionDocId);
+
+                        // Upsert canonical document for this (user, game)
+                        await setDoc(predictionDocRef, predictionData, { merge: true });
+                        console.log(`Upserted prediction for game ${gameId} by ${playerName} (Doc ID: ${predictionDocId})`);
+
+                        // Clean up any stray duplicates that may exist
+                        const deletePromises = [];
+                        existingPredictionsSnapshot.forEach(existingDoc => {
+                            if (existingDoc.id !== predictionDocId) {
+                                deletePromises.push(deleteDoc(existingDoc.ref));
+                            }
+                        });
+                        if (deletePromises.length > 0) {
+                            await Promise.all(deletePromises);
+                            console.log(`Removed ${deletePromises.length} duplicate prediction document(s) for game ${gameId}.`);
                         }
 
                         successCount++;
@@ -726,7 +752,14 @@
                     const predictionCard = document.createElement('div');
                     predictionCard.classList.add('app-card','game-card');
 
-                    const predictionTime = prediction.timestamp ? new Date(prediction.timestamp.toDate()).toLocaleString() : 'N/A';
+                    let predictionTime = 'N/A';
+                    if (prediction.timestamp) {
+                        const rawTimestamp = prediction.timestamp.toDate ? prediction.timestamp.toDate() : prediction.timestamp;
+                        const parsedTimestamp = new Date(rawTimestamp);
+                        if (!Number.isNaN(parsedTimestamp.getTime())) {
+                            predictionTime = parsedTimestamp.toLocaleString();
+                        }
+                    }
 
                     const phaseLabel = resolveStageLabel(game);
 

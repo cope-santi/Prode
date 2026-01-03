@@ -35,7 +35,7 @@ Create a local `serviceAccountKey.json` from your Firebase Console:
 4. **Never commit this file** (already in `.gitignore`)
 
 ### 3. TheSportsDB API Key
-Update `THESPORTSDB_API_KEY` in `src/fetchFixtures.js` and `src/uploadLogos.js`:
+Set `THESPORTSDB_API_KEY` (env var preferred) or update `src/fetchFixtures.js` and `src/uploadLogos.js`:
 - Get your free API key at https://www.thesportsdb.com/api.php
 - Replace `'123'` with your actual key
 
@@ -51,7 +51,7 @@ Tests:
 - ✅ Fixture fetching and filtering
 - ✅ Data structure validation
 - ✅ League normalization
-- ✅ Date range validation (14 days)
+- ✅ Chronological sorting validation
 - ✅ Status validation
 
 ### Upload Team Logos
@@ -61,13 +61,13 @@ node src/uploadLogos.js
 - Searches TheSportsDB for team logos
 - Uploads to Firebase Storage
 - Updates Firestore `teams` collection with logo URLs
-- Respects API rate limits (1 request/6 seconds)
+- Respects API rate limits (delay configured in code)
 
 ### Fetch Fixtures (Manual Testing)
 ```bash
 # In your code:
-import { getFixturesForTeam } from './src/fetchFixtures.js';
-const fixtures = await getFixturesForTeam('Manchester United');
+const { searchFixture } = require('./src/fetchFixtures.js');
+const fixtures = await searchFixture('Manchester United', 'Liverpool');
 ```
 
 ## Module Documentation
@@ -81,14 +81,10 @@ Search for a team by name on TheSportsDB
 - Returns: TheSportsDB team ID (string) or null
 - Rate limited: 1 request per 6 seconds
 
-#### `getUpcomingFixtures(teamId)`
-Fetch upcoming fixtures for a team (next 14 days, no scores yet)
+#### `searchFixture(homeTeamName, awayTeamName)`
+Search upcoming fixtures between two teams
 - Returns: Array of fixture objects with auto-populated League
 - Includes: `thesportsdbEventId` (for later score automation)
-
-#### `getFixturesForTeam(teamName)`
-Convenience function: search + fetch in one call
-- Returns: Array of fixture objects or empty array
 
 #### `logFixtureDetails(fixture)`
 Debug utility to pretty-print fixture data
@@ -123,14 +119,14 @@ Functionality:
 
 TheSportsDB free tier: **~240 requests/day**
 
-Both modules enforce 6-second delays between requests (enforceRateLimit function).
+Both modules enforce short delays between requests (see `RATE_LIMIT_MS`).
 
 ## Debugging
 
 All modules use tagged console logs:
 ```
 [searchTeam] Found: Manchester United (ID: 133606)
-[getUpcomingFixtures] Filtered to 3 upcoming fixtures within 14 days
+[searchFixture] Filtered to upcoming fixtures
 [uploadLogosToFirestore] Uploaded logo for Barcelona
 ```
 
