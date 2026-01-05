@@ -100,6 +100,10 @@ async function run() {
       await batch.commit();
     }
 
+    const teamLogoStats = config.syncTeamLogos
+      ? await syncTeamLogos(db, config, events)
+      : { updated: 0, skipped: 0, missing: 0, total: 0 };
+
     await updateSyncStatus(db, config.tournamentId, {
       lastRunAt: now,
       lastSuccessAt: now,
@@ -110,7 +114,11 @@ async function run() {
       created,
       skippedManual,
       skippedUnchanged,
-      totalEvents: events.length
+      totalEvents: events.length,
+      teamLogoUpdated: teamLogoStats.updated,
+      teamLogoSkipped: teamLogoStats.skipped,
+      teamLogoMissing: teamLogoStats.missing,
+      teamLogoTotal: teamLogoStats.total
     });
   } catch (error) {
     const syncStatus = error.code === "rate_limit" ? "rate_limit" : "error";
@@ -150,7 +158,10 @@ function loadConfig() {
     tournamentId: process.env.TOURNAMENT_ID,
     lookbackDays: parseInt(process.env.LOOKBACK_DAYS || "2", 10),
     cacheTtlMs: parseInt(process.env.PROVIDER_CACHE_TTL_MS || "20000", 10),
-    lockMinutes: parseInt(process.env.POST_MATCH_SYNC_MINUTES || "10", 10)
+    lockMinutes: parseInt(process.env.POST_MATCH_SYNC_MINUTES || "10", 10),
+    syncTeamLogos: parseBoolean(process.env.SYNC_TEAM_LOGOS, true),
+    forceTeamLogos: parseBoolean(process.env.FORCE_TEAM_LOGOS, false),
+    teamLogoDelayMs: parseInt(process.env.TEAM_LOGO_DELAY_MS || "1200", 10)
   };
 }
 
@@ -224,6 +235,167 @@ function parseRounds(value) {
     .split(",")
     .map(item => item.trim())
     .filter(Boolean);
+}
+
+function parseBoolean(value, defaultValue) {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on";
+}
+
+function normalizeTeamName(name) {
+  return String(name || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function buildTeamDocId(name) {
+  return normalizeTeamName(name)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-+$/, "");
+}
+
+function pickTeamLogo(team) {
+  return (
+    team.strTeamBadge ||
+    team.strBadge ||
+    team.strTeamLogo ||
+    team.strLogo ||
+    team.strTeamFanart1 ||
+    team.strTeamFanart2 ||
+    null
+  );
+}
+
+async function fetchLeagueTeams(config) {
+  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
+  const url = `${baseUrl}/${config.apiKey}/lookup_all_teams.php?id=${config.leagueId}`;
+  const response = await fetchWithRetry(url);
+  if (!response.ok) {
+    console.warn(`Team lookup failed: ${response.status}`);
+    return [];
+  }
+  const payload = await response.json();
+  return Array.isArray(payload.teams) ? payload.teams : [];
+}
+
+async function fetchTeamByName(config, teamName) {
+  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
+  const url = `${baseUrl}/${config.apiKey}/searchteams.php?t=${encodeURIComponent(teamName)}`;
+  const response = await fetchWithRetry(url);
+  if (!response.ok) {
+    return null;
+  }
+  const payload = await response.json();
+  if (!Array.isArray(payload.teams) || payload.teams.length === 0) {
+    return null;
+  }
+  const normalized = normalizeTeamName(teamName);
+  const exact = payload.teams.find(team => normalizeTeamName(team.strTeam) === normalized);
+  return exact || payload.teams[0];
+}
+
+function extractTeamsFromEvents(events) {
+  const names = new Set();
+  (events || []).forEach(event => {
+    if (event.strHomeTeam) names.add(event.strHomeTeam);
+    if (event.strAwayTeam) names.add(event.strAwayTeam);
+  });
+  return Array.from(names).sort();
+}
+
+async function loadExistingTeams(db) {
+  const snapshot = await db.collection("teams").get();
+  const map = new Map();
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    if (!data || !data.name) return;
+    map.set(normalizeTeamName(data.name), { ref: doc.ref, data });
+  });
+  return map;
+}
+
+async function syncTeamLogos(db, config, events) {
+  const teamNames = extractTeamsFromEvents(events);
+  const existingTeams = await loadExistingTeams(db);
+  const leagueTeams = await fetchLeagueTeams(config);
+  const leagueTeamsByName = new Map();
+  leagueTeams.forEach(team => {
+    if (team && team.strTeam) {
+      leagueTeamsByName.set(normalizeTeamName(team.strTeam), team);
+    }
+  });
+
+  const stats = { updated: 0, skipped: 0, missing: 0, total: teamNames.length };
+  const maxBatchSize = 450;
+  let batch = db.batch();
+  let batchCount = 0;
+  const syncedAt = admin.firestore.Timestamp.now();
+
+  for (const teamName of teamNames) {
+    const normalized = normalizeTeamName(teamName);
+    const existing = existingTeams.get(normalized);
+    const existingLogo = existing?.data?.logoUrl;
+    const existingSource = existing?.data?.logoSource;
+
+    if (existingLogo && !config.forceTeamLogos && existingSource && existingSource !== "thesportsdb") {
+      stats.skipped += 1;
+      continue;
+    }
+    if (existingLogo && !config.forceTeamLogos && !existingSource) {
+      stats.skipped += 1;
+      continue;
+    }
+
+    let teamData = leagueTeamsByName.get(normalized);
+    if (!teamData) {
+      if (config.teamLogoDelayMs > 0) {
+        await delay(config.teamLogoDelayMs);
+      }
+      teamData = await fetchTeamByName(config, teamName);
+    }
+
+    if (!teamData) {
+      stats.missing += 1;
+      continue;
+    }
+
+    const logoUrl = pickTeamLogo(teamData);
+    if (!logoUrl) {
+      stats.missing += 1;
+      continue;
+    }
+
+    const docRef = existing?.ref || db.collection("teams").doc(buildTeamDocId(teamName));
+    const payload = {
+      name: teamName,
+      logoUrl,
+      logoSource: "thesportsdb",
+      externalTeamId: teamData.idTeam || null,
+      lastSyncedAt: syncedAt
+    };
+
+    batch.set(docRef, payload, { merge: true });
+    batchCount += 1;
+    stats.updated += 1;
+
+    if (batchCount >= maxBatchSize) {
+      await batch.commit();
+      batch = db.batch();
+      batchCount = 0;
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.commit();
+  }
+
+  return stats;
 }
 
 async function fetchWithCache(url, cacheKey, cacheTtlMs) {
