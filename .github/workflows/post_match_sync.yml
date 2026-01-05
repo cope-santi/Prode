@@ -32,7 +32,6 @@ jobs:
           THESPORTSDB_ROUNDS: ${{ secrets.THESPORTSDB_ROUNDS }}
           SYNC_TEAM_LOGOS: ${{ secrets.SYNC_TEAM_LOGOS }}
           FORCE_TEAM_LOGOS: ${{ secrets.FORCE_TEAM_LOGOS }}
-          TEAM_LOGO_DELAY_MS: ${{ secrets.TEAM_LOGO_DELAY_MS }}
           TOURNAMENT_ID: ${{ secrets.TOURNAMENT_ID }}
           LOOKBACK_DAYS: ${{ secrets.LOOKBACK_DAYS }}
           POST_MATCH_SYNC_MINUTES: ${{ secrets.POST_MATCH_SYNC_MINUTES }}

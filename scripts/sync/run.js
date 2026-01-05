@@ -1,6 +1,48 @@
 const admin = require("firebase-admin");
 const { setTimeout: delay } = require("node:timers/promises");
 const { mapEventToGame } = require("./mapper");
+const countries = require("i18n-iso-countries");
+
+countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
+
+const SPECIAL_FLAG_CODES = {
+  "england": "gb-eng",
+  "scotland": "gb-sct",
+  "wales": "gb-wls",
+  "northern ireland": "gb-nir",
+  "usa": "us",
+  "u.s.a.": "us",
+  "united states": "us",
+  "united states of america": "us",
+  "korea republic": "kr",
+  "south korea": "kr",
+  "korea, south": "kr",
+  "korea dpr": "kp",
+  "north korea": "kp",
+  "ivory coast": "ci",
+  "cote d'ivoire": "ci",
+  "cote d ivoire": "ci",
+  "czech republic": "cz",
+  "czechia": "cz",
+  "russia": "ru",
+  "uae": "ae",
+  "united arab emirates": "ae"
+};
+
+const NAME_ALIASES = {
+  "iran": "Iran, Islamic Republic of",
+  "venezuela": "Venezuela, Bolivarian Republic of",
+  "bolivia": "Bolivia, Plurinational State of",
+  "moldova": "Moldova, Republic of",
+  "brunei": "Brunei Darussalam",
+  "laos": "Lao People's Democratic Republic",
+  "vietnam": "Viet Nam",
+  "russia": "Russian Federation",
+  "syria": "Syrian Arab Republic",
+  "cape verde": "Cabo Verde",
+  "swaziland": "Eswatini",
+  "tanzania": "Tanzania, United Republic of"
+};
 
 const CACHE = new Map();
 
@@ -161,7 +203,9 @@ function loadConfig() {
     lockMinutes: parseInt(process.env.POST_MATCH_SYNC_MINUTES || "10", 10),
     syncTeamLogos: parseBoolean(process.env.SYNC_TEAM_LOGOS, true),
     forceTeamLogos: parseBoolean(process.env.FORCE_TEAM_LOGOS, false),
-    teamLogoDelayMs: parseInt(process.env.TEAM_LOGO_DELAY_MS || "1200", 10)
+    flagBaseUrl: process.env.FLAG_BASE_URL || "https://flagcdn.com",
+    flagSize: process.env.FLAG_SIZE || "w80",
+    flagFormat: process.env.FLAG_FORMAT || "png"
   };
 }
 
@@ -260,44 +304,25 @@ function buildTeamDocId(name) {
     .replace(/-+$/, "");
 }
 
-function pickTeamLogo(team) {
-  return (
-    team.strTeamBadge ||
-    team.strBadge ||
-    team.strTeamLogo ||
-    team.strLogo ||
-    team.strTeamFanart1 ||
-    team.strTeamFanart2 ||
-    null
-  );
-}
-
-async function fetchLeagueTeams(config) {
-  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
-  const url = `${baseUrl}/${config.apiKey}/lookup_all_teams.php?id=${config.leagueId}`;
-  const response = await fetchWithRetry(url);
-  if (!response.ok) {
-    console.warn(`Team lookup failed: ${response.status}`);
-    return [];
-  }
-  const payload = await response.json();
-  return Array.isArray(payload.teams) ? payload.teams : [];
-}
-
-async function fetchTeamByName(config, teamName) {
-  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
-  const url = `${baseUrl}/${config.apiKey}/searchteams.php?t=${encodeURIComponent(teamName)}`;
-  const response = await fetchWithRetry(url);
-  if (!response.ok) {
-    return null;
-  }
-  const payload = await response.json();
-  if (!Array.isArray(payload.teams) || payload.teams.length === 0) {
-    return null;
-  }
+function resolveFlagCode(teamName) {
   const normalized = normalizeTeamName(teamName);
-  const exact = payload.teams.find(team => normalizeTeamName(team.strTeam) === normalized);
-  return exact || payload.teams[0];
+  if (!normalized) return null;
+  if (SPECIAL_FLAG_CODES[normalized]) {
+    return SPECIAL_FLAG_CODES[normalized];
+  }
+  const aliasName = NAME_ALIASES[normalized];
+  let code = aliasName ? countries.getAlpha2Code(aliasName, "en") : null;
+  if (!code) {
+    code = countries.getAlpha2Code(teamName, "en");
+  }
+  if (!code) {
+    code = countries.getAlpha2Code(normalized, "en");
+  }
+  return code ? code.toLowerCase() : null;
+}
+
+function buildFlagUrl(config, flagCode) {
+  return `${config.flagBaseUrl}/${config.flagSize}/${flagCode}.${config.flagFormat}`;
 }
 
 function extractTeamsFromEvents(events) {
@@ -323,13 +348,6 @@ async function loadExistingTeams(db) {
 async function syncTeamLogos(db, config, events) {
   const teamNames = extractTeamsFromEvents(events);
   const existingTeams = await loadExistingTeams(db);
-  const leagueTeams = await fetchLeagueTeams(config);
-  const leagueTeamsByName = new Map();
-  leagueTeams.forEach(team => {
-    if (team && team.strTeam) {
-      leagueTeamsByName.set(normalizeTeamName(team.strTeam), team);
-    }
-  });
 
   const stats = { updated: 0, skipped: 0, missing: 0, total: teamNames.length };
   const maxBatchSize = 450;
@@ -343,40 +361,35 @@ async function syncTeamLogos(db, config, events) {
     const existingLogo = existing?.data?.logoUrl;
     const existingSource = existing?.data?.logoSource;
 
-    if (existingLogo && !config.forceTeamLogos && existingSource && existingSource !== "thesportsdb") {
-      stats.skipped += 1;
-      continue;
-    }
-    if (existingLogo && !config.forceTeamLogos && !existingSource) {
-      stats.skipped += 1;
-      continue;
-    }
-
-    let teamData = leagueTeamsByName.get(normalized);
-    if (!teamData) {
-      if (config.teamLogoDelayMs > 0) {
-        await delay(config.teamLogoDelayMs);
+    if (existingLogo && !config.forceTeamLogos) {
+      if (existingSource === "flagcdn") {
+        stats.skipped += 1;
+        continue;
       }
-      teamData = await fetchTeamByName(config, teamName);
+      if (!existingSource) {
+        stats.skipped += 1;
+        continue;
+      }
+      if (existingSource !== "thesportsdb") {
+        stats.skipped += 1;
+        continue;
+      }
     }
 
-    if (!teamData) {
+    const flagCode = resolveFlagCode(teamName);
+    if (!flagCode) {
       stats.missing += 1;
       continue;
     }
 
-    const logoUrl = pickTeamLogo(teamData);
-    if (!logoUrl) {
-      stats.missing += 1;
-      continue;
-    }
-
+    const logoUrl = buildFlagUrl(config, flagCode);
     const docRef = existing?.ref || db.collection("teams").doc(buildTeamDocId(teamName));
     const payload = {
       name: teamName,
       logoUrl,
-      logoSource: "thesportsdb",
-      externalTeamId: teamData.idTeam || null,
+      logoSource: "flagcdn",
+      logoType: "flag",
+      flagCode,
       lastSyncedAt: syncedAt
     };
 
