@@ -1,59 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fases - FIFA World Cup 2026</title>
+    <title>Fases - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
+    <link rel="icon" href="./css/icon/favicon-ball.ico" />
 </head>
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">World Cup 2026</a>
+        <a class="navbar-brand" href="index.html">WC26</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="index.html">Home</a>
+                    <a class="nav-link" href="index.html">Inicio</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+                    <a class="nav-link" href="leaderboard.html">Tabla</a>
                 </li>
                 <li class="nav-item active">
                     <a class="nav-link" href="game_weeks.html">Fases <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="fixtures.html">Fixtures</a>
+                    <a class="nav-link" href="fixtures.html">Calendario</a>
                 </li>
             </ul>
         </div>
     </nav>
 
     <div class="container-fluid py-4">
-        <h1 class="text-center mb-4">Fases del Mundial 2026</h1>
-        <p class="text-center text-muted mb-4">Compare all players' scores across games by phase</p>
+        <section class="section-hero">
+            <div class="section-hero-content">
+                <span class="hero-badge">MUNDIAL 2026</span>
+                <h1 class="hero-title">Fases y rendimiento</h1>
+                <p class="hero-subtitle">Compará puntajes por fase y mira quién lidera cada etapa.</p>
+            </div>
+        </section>
         <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
         <!-- Phase Selector -->
         <div class="gameweek-selector text-center">
             <div id="phase-buttons">
-                <p class="text-muted">Loading phases...</p>
+                <p class="text-muted">Cargando fases...</p>
             </div>
         </div>
 
         <!-- View Options -->
         <div class="view-options">
             <button class="toggle-predictions" id="toggle-predictions-btn" onclick="window.togglePredictions()">
-                Show Predictions
+                Ver predicciones
             </button>
         </div>
 
         <!-- Results Matrix -->
         <div id="matrix-container">
-            <p class="loading-message">Loading data...</p>
+            <p class="loading-message">Cargando datos...</p>
         </div>
 
         <!-- Legend -->
@@ -231,7 +237,7 @@
         window.togglePredictions = function() {
             showPredictions = !showPredictions;
             const btn = document.getElementById('toggle-predictions-btn');
-            btn.textContent = showPredictions ? 'Hide Predictions' : 'Show Predictions';
+            btn.textContent = showPredictions ? 'Ocultar predicciones' : 'Ver predicciones';
             if (currentMatrixGames && currentMatrixPredictions) {
                 renderMatrixWithData(currentMatrixGames, currentMatrixPredictions);
             }
@@ -250,7 +256,7 @@
 
         // Fetch results (currently local calculation, will use Cloud Function in production)
         async function loadPhaseResults() {
-            matrixContainer.innerHTML = '<p class="loading-message">Loading phase data...</p>';
+            matrixContainer.innerHTML = '<p class="loading-message">Cargando datos de fase...</p>';
             
             try {
                 // Fetch games for this phase (without orderBy to avoid needing composite index)
@@ -280,7 +286,7 @@
                 });
 
                 if (games.length === 0) {
-                    matrixContainer.innerHTML = '<p class="empty-message">No games found for this phase.</p>';
+                    matrixContainer.innerHTML = '<p class="empty-message">No hay partidos para esta fase.</p>';
                     legendContainer.style.display = 'none';
                     return;
                 }
@@ -351,7 +357,7 @@
                 // Reset predictions visibility if all games are still upcoming
                 if (!hasStartedGames(gamesFormatted)) {
                     showPredictions = false;
-                    document.getElementById('toggle-predictions-btn').textContent = 'Show Predictions';
+                    document.getElementById('toggle-predictions-btn').textContent = 'Ver predicciones';
                     document.getElementById('toggle-predictions-btn').disabled = true;
                     document.getElementById('toggle-predictions-btn').style.opacity = '0.5';
                     document.getElementById('toggle-predictions-btn').title = 'Predictions available after game starts';

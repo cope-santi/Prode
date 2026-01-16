@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&display=swap');
+
 /* ===================================
    EA Predictor - Final Consolidated Styles
    Combines styles from styles2.css and game_results_summary.html
@@ -1039,4 +1041,348 @@ p.text-muted {
     font-weight: bold;
     color: #555;
     margin: 0 5px;
+}
+
+/* ===================================
+   WC26 Theme (aligned with styles.css)
+   =================================== */
+:root {
+    --wc-primary: #17c964;
+    --wc-secondary: #f6c453;
+    --wc-dark: #0b1220;
+    --wc-light: #f8fafc;
+    --wc-muted: #2f3b4a;
+    --wc-border: rgba(11, 18, 32, 0.12);
+    --wc-card: rgba(255, 255, 255, 0.96);
+    --wc-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+}
+
+body, html {
+    background: radial-gradient(1200px circle at 12% -10%, rgba(23, 201, 100, 0.18), transparent 55%),
+        radial-gradient(900px circle at 88% 0%, rgba(246, 196, 83, 0.18), transparent 60%),
+        #f3f6fb !important;
+    color: var(--wc-dark);
+    font-family: 'Manrope', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--wc-dark) !important;
+    letter-spacing: 0.06em;
+}
+
+a {
+    color: inherit;
+}
+
+a:hover {
+    color: var(--wc-primary);
+}
+
+.navbar {
+    background: rgba(11, 18, 32, 0.9) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.navbar-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.2em;
+}
+
+.navbar-nav .nav-link {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.container,
+.container-fluid {
+    background: transparent;
+    padding: 40px 20px;
+    min-height: 100vh;
+}
+
+.text-muted {
+    color: #5b6676 !important;
+}
+
+.section-hero {
+    position: relative;
+    padding: 70px 0 40px;
+    text-align: center;
+}
+
+.section-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at 20% 20%, rgba(23, 201, 100, 0.12), transparent 60%),
+        radial-gradient(500px circle at 80% 70%, rgba(246, 196, 83, 0.12), transparent 60%);
+    z-index: 0;
+}
+
+.section-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(23, 201, 100, 0.18);
+    border: 1px solid rgba(23, 201, 100, 0.5);
+    color: #0b1220;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.hero-title {
+    font-size: clamp(2.2rem, 4vw, 3.4rem);
+    margin: 16px 0 10px;
+}
+
+.hero-subtitle {
+    color: var(--wc-muted);
+    font-size: 1rem;
+}
+
+.game-results-card,
+.results-matrix-container,
+.player-history-modal .modal-content {
+    background: var(--wc-card);
+    color: var(--wc-dark);
+    border-radius: 18px;
+    border: 1px solid rgba(11, 18, 32, 0.08);
+    box-shadow: var(--wc-shadow);
+}
+
+.game-results-card {
+    border-left: 4px solid var(--wc-primary);
+}
+
+.game-results-card .game-header {
+    color: var(--wc-dark);
+}
+
+.game-results-card .game-info {
+    color: #5b6676;
+}
+
+.game-results-card .game-status.finished {
+    background-color: rgba(23, 201, 100, 0.18);
+    color: #0f5132;
+}
+
+.game-results-card .game-status.ongoing {
+    background-color: rgba(246, 196, 83, 0.2);
+    color: #7a4b00;
+}
+
+.game-results-card .game-status.upcoming {
+    background-color: rgba(11, 18, 32, 0.08);
+    color: #5b6676;
+}
+
+.prediction-entry {
+    background-color: rgba(23, 201, 100, 0.08);
+    border-radius: 12px;
+}
+
+.prediction-entry .score {
+    color: var(--wc-dark) !important;
+}
+
+.prediction-entry .actual-result {
+    color: #0f172a;
+}
+
+.gameweek-button,
+.phase-button,
+.toggle-predictions {
+    background-color: rgba(11, 18, 32, 0.9);
+    border: 1px solid rgba(23, 201, 100, 0.55);
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+}
+
+.gameweek-button:hover,
+.phase-button:hover,
+.toggle-predictions:hover {
+    background-color: var(--wc-primary);
+    border-color: var(--wc-primary);
+    color: #0b1220;
+}
+
+.gameweek-button.active,
+.phase-button.active {
+    background-color: var(--wc-primary) !important;
+    border-color: var(--wc-primary) !important;
+    color: #0b1220 !important;
+}
+
+.results-matrix thead {
+    background-color: #f1f5f9;
+    color: var(--wc-dark);
+}
+
+.results-matrix th,
+.results-matrix td {
+    color: var(--wc-dark);
+}
+
+.results-matrix tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+.results-matrix tbody tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+.results-matrix tbody tr:hover {
+    background-color: #eef2f7;
+}
+
+.player-name-cell,
+.results-matrix tbody td.total-cell,
+.results-matrix tbody td:last-child {
+    background-color: #f1f5f9 !important;
+    color: var(--wc-dark) !important;
+}
+
+.legend {
+    color: var(--wc-muted);
+}
+
+.legend-color.perfect {
+    background-color: rgba(23, 201, 100, 0.2);
+    border: 1px solid var(--wc-primary);
+}
+
+.legend-color.high {
+    background-color: rgba(59, 130, 246, 0.2);
+    border: 1px solid #3b82f6;
+}
+
+.legend-color.medium {
+    background-color: rgba(246, 196, 83, 0.25);
+    border: 1px solid #f59e0b;
+}
+
+.legend-color.low {
+    background-color: rgba(239, 68, 68, 0.2);
+    border: 1px solid #ef4444;
+}
+
+.legend-color.pending {
+    background-color: rgba(148, 163, 184, 0.2);
+    border: 1px solid #94a3b8;
+}
+
+.player-history-modal {
+    background-color: rgba(11, 18, 32, 0.65);
+}
+
+.player-history-modal .modal-header {
+    background: linear-gradient(135deg, rgba(23, 201, 100, 0.15), rgba(246, 196, 83, 0.12));
+}
+
+.player-history-modal .modal-header h3,
+.player-history-modal .modal-body {
+    color: var(--wc-dark);
+}
+
+.player-history-modal .close-modal {
+    color: #475569;
+}
+
+.player-history-modal .close-modal:hover {
+    color: #0b1220;
+}
+
+.score-cell.pending {
+    background-color: #e2e8f0;
+    color: #64748b;
+}
+
+.score-cell.perfect {
+    background-color: #17c964;
+    color: #0b1220;
+}
+
+.score-cell.high {
+    background-color: #38bdf8;
+    color: #0b1220;
+}
+
+.score-cell.medium {
+    background-color: #f6c453;
+    color: #0b1220;
+}
+
+.score-cell.low {
+    background-color: #f97316;
+    color: #0b1220;
+}
+
+.score-cell.zero {
+    background-color: #ef4444;
+    color: #0b1220;
+}
+
+.player-history-table thead {
+    background-color: #f1f5f9;
+    border-bottom: 2px solid rgba(15, 23, 42, 0.2);
+}
+
+.player-history-table th {
+    color: var(--wc-dark);
+}
+
+.player-history-table td {
+    color: var(--wc-muted);
+}
+
+.player-history-prediction {
+    color: #0b1220;
+}
+
+.player-history-result {
+    color: #475569;
+}
+
+.player-history-points {
+    color: #0b1220;
+}
+
+.loading-message,
+.empty-message {
+    color: #64748b;
+}
+
+.team-name {
+    color: var(--wc-dark);
+}
+
+.vs-separator {
+    color: var(--wc-dark);
+}
+
+body .bg-dark {
+    background-color: transparent !important;
+}
+
+body .text-white {
+    color: var(--wc-dark) !important;
 }

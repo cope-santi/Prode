@@ -1,18 +1,19 @@
 /* ------------------------- CSS Variables -------------------------*/
 :root {
-    --primary-color: #019D9A; /* Your main teal */
-    --secondary-color: #3fc1c9; /* Lighter teal for accents/buttons */
-    --dark-bg-color: #252a34; /* Dark background for footer/hover */
-    --light-bg-color-1: #ffffff; /* Pure white for cards/sections */
-    --light-bg-color-2: #f8f9fa; /* A subtle off-white for main section backgrounds */
-    --light-bg-color-3: #F0F1F2; /* Your current portfolio background */
-    --text-dark: #333; /* General dark text */
-    --text-medium: #555; /* Medium grey text */
-    --text-light: #eaeaea; /* Light text for dark backgrounds */
-    --status-finished-color: #e74c3c; /* Red for finished status */
-    --status-upcoming-color: #019D9A; /* Reusing primary color for consistency */
-    --border-light: rgba(0, 0, 0, 0.08); /* Consistent light border */
-    --shadow-light: 0 5px 15px rgba(0, 0, 0, 0.1); /* Consistent subtle shadow */
+    --primary-color: #17c964; /* Pitch green */
+    --secondary-color: #f6c453; /* Trophy gold */
+    --dark-bg-color: #0b1220; /* Night stadium */
+    --light-bg-color-1: #ffffff; /* Card base */
+    --light-bg-color-2: #f3f6fb; /* Subtle section fill */
+    --light-bg-color-3: #e9eef5; /* Soft neutral */
+    --text-dark: #0b1220; /* Deep text */
+    --text-medium: #2f3b4a; /* Muted text */
+    --text-light: #f8fafc; /* Light text */
+    --status-finished-color: #ef4444; /* Red for finished status */
+    --status-upcoming-color: #17c964; /* Primary green */
+    --border-light: rgba(11, 18, 32, 0.12); /* Light border */
+    --shadow-light: 0 18px 45px rgba(15, 23, 42, 0.12); /* Soft shadow */
+    --shadow-strong: 0 24px 60px rgba(15, 23, 42, 0.22); /* Strong shadow */
 }
 
 /* ===================================
@@ -26,12 +27,15 @@
 .phase-button {
     margin: 5px;
     font-weight: 600;
-    background-color: #1a1d26;
-    border: 1px solid var(--primary-color);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 5px;
+    background-color: rgba(11, 18, 32, 0.9);
+    border: 1px solid rgba(23, 201, 100, 0.55);
+    color: #ffffff;
+    padding: 8px 18px;
+    border-radius: 999px;
     cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
     transition: all 0.3s ease;
 }
 
@@ -39,19 +43,22 @@
 .phase-button:hover {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
+    color: #0b1220;
 }
 
 .gameweek-button.active,
 .phase-button.active {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
-    color: white !important;
+    color: #0b1220 !important;
 }
 
 /* -------------------------HTML Tags -------------------------*/
 body, html {
-    background-color: var(--light-bg-color-1); /* Using variable */
-    font-family: 'Poppins', sans-serif;
+    background: radial-gradient(1200px circle at 12% -10%, rgba(23, 201, 100, 0.18), transparent 55%),
+        radial-gradient(900px circle at 88% 0%, rgba(246, 196, 83, 0.18), transparent 60%),
+        var(--light-bg-color-2);
+    font-family: 'Manrope', sans-serif;
     margin: 0;
     text-align: center;
     font-size: 16px; /* Base font size for rem calculations */
@@ -60,32 +67,33 @@ body, html {
 
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Bebas Neue', sans-serif;
     color: var(--text-dark); /* Ensure headings are dark */
+    letter-spacing: 0.06em;
 }
 
 h1 {
-    font-size: 3.5rem; /* ~56px */
+    font-size: clamp(2.6rem, 6vw, 4.6rem);
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
 h2 {
-    font-size: 2.5rem; /* ~40px */
+    font-size: clamp(2rem, 4vw, 3.2rem);
     font-weight: 700;
-    line-height: 1.2;
+    line-height: 1.15;
 }
 
 h3 {
-    font-size: 1.75rem; /* ~28px */
+    font-size: clamp(1.4rem, 2.6vw, 2rem);
     font-weight: 600;
     line-height: 1.3;
 }
 
 p {
-    font-family: 'Poppins', sans-serif;
-    line-height: 1.6; /* Adjusted for better readability */
-    font-size: 1.1rem; /* Slightly larger for readability */
+    font-family: 'Manrope', sans-serif;
+    line-height: 1.65; /* Adjusted for better readability */
+    font-size: 1rem; /* Slightly smaller for tighter layout */
     color: var(--text-medium); /* Default paragraph color */
 }
 
@@ -113,23 +121,307 @@ img {
 
 /* -------------------------Navigation bar -------------------------*/
 .navbar {
-    background-color: var(--dark-bg-color) !important; /* Using variable, !important to override Bootstrap bg-dark */
+    background: rgba(11, 18, 32, 0.9) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .navbar-brand {
-    font-size: 1.75rem; /* Slightly larger brand text */
-    font-weight: 700; /* Bolder */
-    color: var(--light-bg-color-1) !important; /* Ensure brand is white */
+    font-size: 1.8rem;
+    font-weight: 700;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 0.2em;
+    color: var(--light-bg-color-1) !important;
 }
 
 .navbar-nav .nav-link {
-    color: rgba(255, 255, 255, 0.85); /* Slightly transparent white for links */
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.75rem;
     transition: color 0.3s ease;
 }
 
 .navbar-nav .nav-link:hover {
     color: var(--light-bg-color-1); /* Solid white on hover */
+}
+
+/* -------------------------Hero Section -------------------------*/
+.hero {
+    position: relative;
+    min-height: 68vh;
+    padding: 90px 0 70px;
+    color: var(--text-light);
+    text-align: left;
+    overflow: hidden;
+}
+
+.hero h1,
+.hero h2 {
+    color: #ffffff;
+}
+
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.hero-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(1.15) contrast(1.05);
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(110deg, rgba(11, 18, 32, 0.95), rgba(11, 18, 32, 0.55) 55%, rgba(11, 18, 32, 0.2));
+}
+
+.hero-pattern {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: radial-gradient(500px circle at 15% 25%, rgba(23, 201, 100, 0.25), transparent 65%),
+        radial-gradient(400px circle at 80% 20%, rgba(246, 196, 83, 0.22), transparent 60%);
+}
+
+.hero-inner {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 40px;
+    align-items: center;
+}
+
+.hero-content {
+    animation: heroFade 0.9s ease-out both;
+}
+
+.hero-brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.hero-logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    padding: 8px;
+}
+
+.hero-emblem {
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.05)),
+        linear-gradient(140deg, rgba(246, 196, 83, 0.95), rgba(23, 201, 100, 0.95));
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    color: #0b1220;
+    text-transform: uppercase;
+}
+
+.hero-emblem-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.2em;
+    line-height: 1;
+}
+
+.hero-emblem-year {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+}
+
+.hero-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(23, 201, 100, 0.18);
+    border: 1px solid rgba(23, 201, 100, 0.5);
+    color: #e6fff1;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 999px;
+}
+
+.hero-tagline {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hero-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 520px;
+    font-size: 1.05rem;
+    margin-bottom: 24px;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.hero-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.hero-ribbon span {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.sync-status-banner {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #f8fafc;
+    font-size: 0.85rem;
+}
+
+.sync-status-banner:empty {
+    display: none;
+}
+
+.hero-panel {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: var(--shadow-strong);
+    backdrop-filter: blur(6px);
+    animation: heroFade 1s ease-out both;
+    animation-delay: 0.12s;
+}
+
+.hero-panel-title {
+    font-size: 2.1rem;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+.hero-panel p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 20px;
+}
+
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.hero-stat {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-family: 'Bebas Neue', sans-serif;
+    color: #ffffff;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+}
+
+.hero-panel-note {
+    margin-top: 18px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes heroFade {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 992px) {
+    .hero {
+        padding: 80px 0 60px;
+    }
+
+    .hero-inner {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-logo {
+        width: 64px;
+        height: 64px;
+    }
+
+    .hero-emblem {
+        width: 64px;
+        height: 64px;
+    }
+
+    .hero-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 /* Background Image */
@@ -193,6 +485,7 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
     color: var(--text-dark); /* Ensure good contrast */
     margin-bottom: 40px; /* Consistent spacing below headings */
     text-align: center;
+    letter-spacing: 0.08em;
 }
 
 /* -------------------------Profile Image & Icons -------------------------*/
@@ -272,13 +565,15 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 /*------------------------------------------------------------------
 [ General Button Styling ]*/
 .btn {
-    border-radius: 8px; /* Consistent rounded corners */
-    font-family: 'Poppins', sans-serif;
-    font-size: 1.1rem; /* Consistent font size for general buttons */
-    padding: 12px 25px; /* Consistent padding */
-    transition: background-color 0.3s ease, transform 0.2s ease, color 0.3s ease;
-    font-weight: 600; /* Bolder text */
-    border: none; /* No border for the main button style */
+    border-radius: 999px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.9rem;
+    padding: 12px 24px;
+    transition: background-color 0.3s ease, transform 0.2s ease, color 0.3s ease, box-shadow 0.3s ease;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
     cursor: pointer;
     text-decoration: none; /* Ensure no underline */
     display: inline-block; /* For proper padding and margin */
@@ -299,43 +594,56 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 
 /* Primary Button Style (for your main actions like Submit Predictions) */
 .btn-primary-custom {
-    background-color: var(--primary-color);
-    color: var(--light-bg-color-1);
+    background: linear-gradient(135deg, var(--primary-color), #4ade80);
+    color: #0b1220;
+    box-shadow: 0 12px 20px rgba(23, 201, 100, 0.3);
 }
 .btn-primary-custom:hover:enabled {
-    background-color: #007B7A; /* Darker shade of your primary color */
+    background-color: #12b76a; /* Darker shade of your primary color */
     transform: translateY(-2px);
 }
 
 /* Secondary Button Style (for alternatives like Sign Up) */
 .btn-secondary-custom {
-    background-color: var(--secondary-color); /* Your lighter teal */
-    color: var(--light-bg-color-1);
+    background-color: #111827;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
 }
 .btn-secondary-custom:hover:enabled {
-    background-color: var(--primary-color); /* Darker shade on hover */
+    background-color: #0b1220;
     transform: translateY(-2px);
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-ghost:hover:enabled {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
 }
 
 /* Overriding Bootstrap's default button colors to match your theme */
 .btn-success {
     background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
-    color: var(--light-bg-color-1) !important;
+    color: #0b1220 !important;
 }
 .btn-success:hover {
-    background-color: #007B7A !important;
-    border-color: #007B7A !important;
+    background-color: #12b76a !important;
+    border-color: #12b76a !important;
 }
 
 .btn-info {
     background-color: var(--secondary-color) !important;
     border-color: var(--secondary-color) !important;
-    color: var(--light-bg-color-1) !important;
+    color: #0b1220 !important;
 }
 .btn-info:hover {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
+    background-color: #eab308 !important;
+    border-color: #eab308 !important;
 }
 
 .btn-danger {
@@ -353,9 +661,23 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 /* --- Game List and Prediction Form Sections --- */
 
 #game-prediction-section {
-    /* Revert background to a slightly darker light grey, or your original #f4f4f4 */
-    background-color: #f4f4f4; /* Reverted from var(--light-bg-color-2) */
-    padding: 60px 0; /* Keep consistent vertical spacing */
+    position: relative;
+    background-color: transparent;
+    padding: 80px 0;
+}
+
+#game-prediction-section::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(700px circle at 20% 20%, rgba(23, 201, 100, 0.08), transparent 60%),
+        radial-gradient(500px circle at 80% 80%, rgba(246, 196, 83, 0.1), transparent 60%);
+    z-index: 0;
+}
+
+#game-prediction-section .container {
+    position: relative;
+    z-index: 1;
 }
 
 /* Ensure the main section heading color is good */
@@ -403,7 +725,7 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 .vs-separator {
   font-size: 1rem;
   font-weight: bold;
-  color: #333;
+  color: var(--text-dark);
 }
 
 .score-inputs {
@@ -424,12 +746,12 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 
 /* New generic card style to be applied to .prediction-section, .game-card, .prediction-game-card */
 .app-card {
-    background-color: var(--light-bg-color-1); /* White background for cards, as before */
-    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.96);
+    border-radius: 20px;
     box-shadow: var(--shadow-light);
     padding: 35px;
-    border: 1px solid var(--border-light);
-    margin-bottom: 30px; /* Space between cards in a list, or for main cards before next section */
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    margin-bottom: 30px;
 }
 
 /* Specific adjustments for game cards (if they are dynamically added and don't need margin-bottom directly) */
@@ -467,10 +789,66 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 
 .prediction-section h2 {
     color: var(--text-dark); /* Darker text for headings */
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Bebas Neue', sans-serif;
     font-weight: 700;
     margin-bottom: 30px;
-    font-size: 2.2rem;
+    font-size: 2.4rem;
+    letter-spacing: 0.08em;
+}
+
+.section-lede {
+    margin: 0 auto 20px;
+    max-width: 640px;
+    color: var(--text-medium);
+    font-size: 1rem;
+}
+
+.quick-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 0 auto 28px;
+}
+
+.quick-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(11, 18, 32, 0.04);
+    border: 1px solid rgba(11, 18, 32, 0.08);
+    text-align: left;
+}
+
+.quick-step-number {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--dark-bg-color);
+    color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.quick-step-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.quick-step-title {
+    font-weight: 700;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+}
+
+.quick-step-note {
+    color: var(--text-medium);
+    font-size: 0.85rem;
 }
 
 .form-group {
@@ -484,9 +862,11 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-dark);
-    font-size: 1.1rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 /* General input styling for all text/number/email/password inputs */
@@ -500,18 +880,18 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
     width: 100%; /* Make all inputs full width by default */
     padding: 12px 15px;
     border: 1px solid var(--border-light); /* Lighter border from your palette */
-    border-radius: 8px; /* Consistent rounded corners */
-    font-size: 1.1rem;
+    border-radius: 14px;
+    font-size: 1rem;
     box-sizing: border-box;
     transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     color: var(--text-dark); /* Ensure text color is consistent */
-    background-color: var(--light-bg-color-1); /* Consistent background */
+    background-color: #f8fafc;
 }
 
 .form-group input:focus,
 .form-group select:focus { /* Apply focus style to all input types */
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.25rem rgba(1, 157, 154, 0.25);
+    box-shadow: 0 0 0 0.25rem rgba(23, 201, 100, 0.25);
     outline: none;
 }
 
@@ -570,12 +950,12 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
 
 .game-card .status.upcoming {
     color: var(--status-upcoming-color);
-    background-color: rgba(1, 157, 154, 0.1);
+    background-color: rgba(23, 201, 100, 0.12);
 }
 
 .game-card .status.finished {
     color: var(--status-finished-color);
-    background-color: rgba(231, 76, 60, 0.1);
+    background-color: rgba(239, 68, 68, 0.12);
 }
 
 
@@ -597,28 +977,28 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
     text-align: center; /* Center the input text */
     font-size: 1.1em; /* Slightly larger font size */
     font-weight: bold; /* Make the text bold */
-    border: 1px solid #ccc; /* Subtle border */
-    border-radius: 8px; /* Rounded corners */
+    border: 1px solid var(--border-light); /* Subtle border */
+    border-radius: 10px; /* Rounded corners */
     -moz-appearance: textfield; /* Firefox specific: Hide spinner arrows */
     appearance: none; /* Hide spinner arrows for Chrome/Safari */
     outline: none; /* Remove outline on focus */
     transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Smooth transition for focus effect */
-    background-color: #f9f9f9; /* Light background */
+    background-color: #f8fafc; /* Light background */
 }
 
 /* Style for the hyphen separator */
 .prediction-game-card .prediction-inputs span {
     font-size: 1.2em; /* Make the hyphen slightly larger */
     font-weight: bold;
-    color: #555; /* Darker color for the hyphen */
+    color: var(--text-medium); /* Darker color for the hyphen */
     margin: 0 5px; /* Give it a little more breathing room */
 }
 
 /* Focus state for inputs */
 .prediction-game-card .prediction-inputs input[type="number"]:focus {
-    border-color: #007bff; /* Highlight border on focus (e.g., a blue) */
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* Subtle glow on focus */
-    background-color: #fff; /* White background on focus */
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(23, 201, 100, 0.25);
+    background-color: #ffffff;
 }
 
 /* Hide the up/down arrows (spinners) for number inputs across browsers */

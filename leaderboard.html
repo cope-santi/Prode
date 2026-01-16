@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leaderboard - FIFA World Cup 2026</title>
+    <title>Tabla - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
@@ -11,41 +11,47 @@
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">World Cup 2026</a>
+        <a class="navbar-brand" href="index.html">WC26</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="index.html">Home</a>
+                    <a class="nav-link" href="index.html">Inicio</a>
                 </li>
                 <li class="nav-item active">
-                    <a class="nav-link" href="leaderboard.html">Leaderboard <span class="sr-only">(current)</span></a>
+                    <a class="nav-link" href="leaderboard.html">Tabla <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="game_weeks.html">Fases</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="fixtures.html">Fixtures</a>
+                    <a class="nav-link" href="fixtures.html">Calendario</a>
                 </li>
             </ul>
         </div>
     </nav>
 
     <div class="container py-4">
-        <h1 class="text-center mb-5">World Cup 2026 Leaderboard & Results</h1>
+        <section class="section-hero">
+            <div class="section-hero-content">
+                <span class="hero-badge">MUNDIAL 2026</span>
+                <h1 class="hero-title">Tabla general</h1>
+                <p class="hero-subtitle">Segui el ranking completo y los resultados actualizados.</p>
+            </div>
+        </section>
         <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
         <div id="overall-leaderboard-container" class="game-results-card mb-5" style="display: none;">
-            <h2 class="text-center mb-4">Overall Player Standings</h2>
+            <h2 class="text-center mb-4">Tabla general de jugadores</h2>
             <div id="leaderboard-list">
-                <p class="text-center text-muted">Calculating overall scores...</p>
+                <p class="text-center text-muted">Calculando puntajes...</p>
             </div>
         </div>
 
         <div id="all-games-results-container">
-            <p class="text-center text-muted">Loading game results and predictions...</p>
+            <p class="text-center text-muted">Cargando resultados y predicciones...</p>
         </div>
     </div>
 
@@ -53,7 +59,7 @@
     <div id="player-history-modal" class="player-history-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="player-history-title">Player History</h3>
+                <h3 id="player-history-title">Historial del jugador</h3>
                 <span class="close-modal" style="cursor: pointer;" onclick="document.getElementById('player-history-modal').style.display = 'none';">&times;</span>
             </div>
             <div class="modal-body">
@@ -98,7 +104,7 @@
 
         // --- Load All Results Function ---
         async function loadAllResults() {
-            allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Loading game results and predictions...</p>';
+            allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Cargando resultados y predicciones...</p>';
 
             try {
                 // 1. Fetch all games
@@ -147,7 +153,7 @@
                 allGamesResultsContainer.innerHTML = '';
 
                 if (games.length === 0) {
-                    allGamesResultsContainer.innerHTML = '<p class="text-center">No games found.</p>';
+                allGamesResultsContainer.innerHTML = '<p class="text-center">No hay partidos.</p>';
                     return;
                 }
 
@@ -167,8 +173,8 @@
                     const gamePredictions = predictions.filter(p => p.gameId === game.id);
 
                     const actualResultDisplay = (game.Status === 'finished' || game.Status === 'live') && game.HomeScore !== null && game.AwayScore !== null
-                        ? `<p class="actual-result">Actual Result: ${game.HomeScore} - ${game.AwayScore}</p>`
-                        : `<p class="actual-result">Actual Result: Not available yet</p>`;
+                        ? `<p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>`
+                        : `<p class="actual-result">Resultado real: Aun no disponible</p>`;
 
                     const predictionsHTML = (game.Status === 'finished' || game.Status === 'live')
                         ? gamePredictions.length > 0
@@ -196,7 +202,7 @@
 
                                 return `
                                     <div class="prediction-entry">
-                                        <span><strong>${prediction.playerName || 'Anonymous'}</strong> predicted: ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</span>
+                                        <span><strong>${prediction.playerName || 'Anonimo'}</strong> predijo: ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</span>
                                         <span class="score ${pointsClass}">${pointsDisplay}</span>
                                     </div>
                                 `;

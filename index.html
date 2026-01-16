@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="es" dir="ltr">
 
 <head>
     <meta charset="utf-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Eliminatorias Anónimas</title>
-    <meta name="title" content="Eliminatorias Anónimas" />
-    <meta name="description" content="Fútbol, fútbol & fútbol!" />
+    <title>Prode Mundial 2026</title>
+    <meta name="title" content="Prode Mundial 2026" />
+    <meta name="description" content="Prode del Mundial 2026 con predicciones, tabla y fixtures actualizados." />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="" />
-    <meta property="og:title" content="Eliminatorias Anónimas" />
-    <meta property="og:description" content="Fútbol, fútbol & fútbol!" />
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Sacramento&display=swap" rel="stylesheet">
+    <meta property="og:title" content="Prode Mundial 2026" />
+    <meta property="og:description" content="Prode del Mundial 2026 con predicciones, tabla y fixtures actualizados." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
 
@@ -32,7 +33,7 @@
 <body>
     <nav class="navbar sticky-top navbar-expand-sm navbar-dark bg-dark ">
         <div class="container d-flex flex-column flex-md-row justify-content-between">
-            <a class="navbar-brand" href="#">EA</a>
+            <a class="navbar-brand" href="index.html">WC26</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -40,19 +41,19 @@
             <div class="collapse navbar-collapse" id="navbarsExample03">
                 <ul class="navbar-nav me-auto mb-2 mb-sm-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+                        <a class="nav-link" href="leaderboard.html">Tabla</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="game_weeks.html">Fases</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="fixtures.html">Fixtures</a>
+                        <a class="nav-link" href="fixtures.html">Calendario</a>
                     </li>
                     <li class="nav-item" id="adminNavLink" style="display: none;">
-                        <a class="nav-link" href="admin.html">Admin Panel</a>
+                        <a class="nav-link" href="admin.html">Admin</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#auth-ui">Iniciar sesión</a>
+                        <a class="nav-link" href="#auth-ui">Iniciar sesion</a>
                     </li>
                 </ul>
             </div>
@@ -60,145 +61,144 @@
     </nav>
 
 
-    <section class="hero-image-section py-2">
-        <div class="hero-image-container">
-            <img src="css/images/bg-cancha.jpg" class="img-fluid bg-img" alt="background-image">
+    <header class="hero">
+        <div class="hero-bg" aria-hidden="true">
+            <img src="css/images/bg3.jpg" alt="">
         </div>
-    </section>
-
-
-    <section id="profile" class="py-2">
-        <div class="colored-container m-md-3">
-
-            <div class="d-md-flex flex-md-equal w-100 mt-md-0 mb-md-3 ps-md-3">
-
-                <div class="me-md-0 pt-3 px-3 pt-md-0 px-md-5 text-center overflow-hidden w-100">
-                    <div class="my-3 py-3">
-                        <img class="img-profile" src="css/images/EA-logo.png" alt="profile">
-                        <h1 class="fw-bold">Eliminatorias Anónimas</h1>
-                        <p>-- Mundial 2026 --</p>
-                        <div id="sync-status-banner" class="text-muted" style="font-size: 0.85rem;"></div>
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="hero-pattern" aria-hidden="true"></div>
+        <div class="container hero-inner">
+            <div class="hero-content">
+                <div class="hero-brand">
+                    <div class="hero-emblem" aria-hidden="true">
+                        <span class="hero-emblem-text">WC</span>
+                        <span class="hero-emblem-year">26</span>
+                    </div>
+                    <div class="hero-brand-text">
+                        <span class="hero-badge">MUNDIAL 2026</span>
+                        <span class="hero-tagline">USA / Mexico / Canada</span>
                     </div>
                 </div>
-
-                <div class="me-md-0 pt-3 px-3 pt-md-0 px-md-5 text-center align-self-center overflow-hidden w-100">
-                    <div class="my-3 py-3">
-                        <h2 class="fw-bold">Muchachos...</h2>
-                        <p class="profile-description">Si van a opinar, que sea faltándose al respeto.</p>
+                <h1>Prode Mundial 2026</h1>
+                <p class="hero-subtitle">Predici resultados, suma puntos y vivi cada fase del Mundial.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary-custom" href="#game-prediction-section">Empezar</a>
+                    <a class="btn btn-secondary-custom" href="leaderboard.html">Ver tabla</a>
+                    <a class="btn btn-ghost" href="fixtures.html">Ver calendario</a>
+                </div>
+                <div class="hero-ribbon">
+                    <span>Fase de grupos</span>
+                    <span>R32</span>
+                    <span>R16</span>
+                    <span>Cuartos</span>
+                    <span>Semis</span>
+                    <span>Final</span>
+                </div>
+                <div id="sync-status-banner" class="sync-status-banner"></div>
+            </div>
+            <div class="hero-panel">
+                <h2 class="hero-panel-title">Vivi el Mundial 2026</h2>
+                <p>Arma tu prode, segui la tabla y senti cada partido como final.</p>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <span class="stat-value">48</span>
+                        <span class="stat-label">Selecciones</span>
+                    </div>
+                    <div class="hero-stat">
+                        <span class="stat-value">104</span>
+                        <span class="stat-label">Partidos</span>
+                    </div>
+                    <div class="hero-stat">
+                        <span class="stat-value">3</span>
+                        <span class="stat-label">Sedes</span>
                     </div>
                 </div>
-
+                <div class="hero-panel-note">Sedes 2026: USA, Mexico y Canada.</div>
             </div>
-
         </div>
-    </section>
+    </header>
 
-
-    <section id="game-prediction-section" class="py-5"> <div class="container"> <div class="app-card prediction-section"> <h2>Submit Your Predictions</h2>
-        <div id="auth-ui" class="mb-4">
-            <div id="login-register-form">
-                <div class="form-group mb-3">
-                    <label for="userEmail">Email:</label>
-                    <input type="email" id="userEmail" class="form-control" placeholder="Enter your email" required>
-                </div>
-                <div class="form-group mb-3">
-                    <label for="userPassword">Password:</label>
-                    <input type="password" id="userPassword" class="form-control" placeholder="Enter your password" required>
-                    <div class="text-right mt-1">
-                        <a href="#" id="forgotPasswordLink" class="text-muted small">Forgot Password?</a>
+    <section id="game-prediction-section" class="py-5">
+        <div class="container">
+            <div class="app-card prediction-section">
+                <h2>Carga tus predicciones</h2>
+                <p class="section-lede">Tres pasos y listo: inicia sesion, completa marcadores y envia.</p>
+                <div class="quick-steps">
+                    <div class="quick-step">
+                        <span class="quick-step-number">1</span>
+                        <div class="quick-step-text">
+                            <span class="quick-step-title">Inicia sesion</span>
+                            <span class="quick-step-note">Con tu correo</span>
+                        </div>
+                    </div>
+                    <div class="quick-step">
+                        <span class="quick-step-number">2</span>
+                        <div class="quick-step-text">
+                            <span class="quick-step-title">Completa marcadores</span>
+                            <span class="quick-step-note">Partido por partido</span>
+                        </div>
+                    </div>
+                    <div class="quick-step">
+                        <span class="quick-step-number">3</span>
+                        <div class="quick-step-text">
+                            <span class="quick-step-title">Envia todo</span>
+                            <span class="quick-step-note">Guarda tus predicciones</span>
+                        </div>
                     </div>
                 </div>
-                <button id="signInButton" class="btn btn-success me-2">Sign In</button>
-                <button id="signUpButton" class="btn btn-info">Sign Up</button>
-                <p id="auth-message" class="text-danger mt-3" style="font-weight: bold;"></p>
-            </div>
+                <div id="auth-ui" class="mb-4">
+                    <div id="login-register-form">
+                        <div class="form-group mb-3">
+                            <label for="userEmail">Correo:</label>
+                            <input type="email" id="userEmail" class="form-control" placeholder="Ingresa tu correo" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="userPassword">Contrasena:</label>
+                            <input type="password" id="userPassword" class="form-control" placeholder="Ingresa tu contrasena" required>
+                            <div class="text-right mt-1">
+                                <a href="#" id="forgotPasswordLink" class="text-muted small">Olvidaste tu contrasena?</a>
+                            </div>
+                        </div>
+                        <button id="signInButton" class="btn btn-success me-2">Entrar</button>
+                        <button id="signUpButton" class="btn btn-info">Crear cuenta</button>
+                        <p id="auth-message" class="text-danger mt-3" style="font-weight: bold;"></p>
+                    </div>
 
-            <div id="user-status-display" style="display: none;">
-                <p>Welcome, <span id="userNameDisplay" style="font-weight: bold;"></span>!</p>
-                <p>You are signed in as: <span id="userEmailDisplay" style="font-weight: bold;"></span></p>
-                <button id="signOutButton" class="btn btn-danger mt-2">Sign Out</button>
-            </div>
-        </div>
+                    <div id="user-status-display" style="display: none;">
+                        <p>Bienvenido, <span id="userNameDisplay" style="font-weight: bold;"></span>!</p>
+                        <p>Sesion iniciada con: <span id="userEmailDisplay" style="font-weight: bold;"></span></p>
+                        <button id="signOutButton" class="btn btn-danger mt-2">Salir</button>
+                    </div>
+                </div>
                 <div class="form-group">
-                    <label for="playerName">Your Name:</label>
-                    <input type="text" id="playerName" placeholder="Enter your name" required>
+                    <label for="playerName">Tu nombre:</label>
+                    <input type="text" id="playerName" placeholder="Ingresa tu nombre" required>
                 </div>
 
                 <div id="prediction-form-games" class="game-list">
-                    Loading games for prediction...
+                    Cargando partidos...
                 </div>
 
-                <button id="submitPredictions" class="btn btn-primary-custom" disabled>Submit All Predictions</button>
+                <button id="submitPredictions" class="btn btn-primary-custom" disabled>Enviar predicciones</button>
                 <p id="message" style="color: green; font-weight: bold; margin-top: 15px;"></p>
             </div>
 
-            <hr class="my-5"> 
-            
-            <div id="my-predictions-section" class="prediction-section" style="display: none;"> <h2 class="section-heading">My World Cup 2026 Predictions</h2>
+            <hr class="my-5">
+
+            <div id="my-predictions-section" class="app-card prediction-section" style="display: none;">
+                <h2 class="section-heading">Mis predicciones del Mundial 2026</h2>
                 <!-- Phase Selector for My Predictions -->
                 <div id="my-predictions-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-                    <h5 class="mb-3">Filter by Phase:</h5>
+                    <h5 class="mb-3">Filtrar por fase:</h5>
                     <div id="my-predictions-phase-buttons"></div>
                 </div>
                 <div id="my-predictions-list" class="game-list">
-                    <p class="text-center">No predictions submitted yet.</p>
+                    <p class="text-center">Todavia no hay predicciones.</p>
                 </div>
             </div>
-        </div> </section> 
-
-        </div>
-
-    </section>
-
-    <section id=description class="py-2">
-
-        <div class="bg-light p-3 p-md-5 mt-md-3 mb-md-0 text-center">
-            <div class="col-md-5 mx-auto my-4">
-                <h2 class='section-heading'>Paso a Paso ⚽</h2>
-            </div>
-        </div>
-
-        <div class="d-md-flex flex-md-equal w-100 mt-md-0 mb-md-3 ps-md-3">
-
-            <div class="bg-light me-md-0 pt-3 px-3 pt-md-0 px-md-5 text-center text-black overflow-hidden w-100">
-                <div class="my-3 py-3">
-                    <img class="img-icon" src="css/images/pelota-de-futbol.svg" alt="data-analytics-icon">
-                    <h3 class='skill-title'>Paso 1</h3>
-                    <p class="description-step"> No money, no code (menos Daguish)
-                </div>
-            </div>
-
-            <div class="bg-light me-md-0 pt-3 px-3 pt-md-0 px-md-5 text-center text-black overflow-hidden w-100">
-                <div class="my-3 py-3">
-                    <img class="img-icon" src="css/images/pelota-de-futbol.svg" alt="data-analytics-icon">
-                    <h3 class='skill-title'>Paso 2</h3>
-                    <p class="description-step"> Sube tus predicciones de marcadores
-                </div>
-            </div>
-
-            <div class="bg-light me-md-0 pt-3 px-3 pt-md-0 px-md-5 text-center text-black overflow-hidden w-100">
-                <div class="my-3 py-3">
-                    <img class="img-icon" src="css/images/pelota-de-futbol.svg" alt="data-analytics-icon">
-                    <h3 class='skill-title'>Paso 3</h3>
-                    <p class="description-step"> Acosa al ADMIN para que mande tabla
-                </div>
-            </div>
-
         </div>
     </section>
 
-    <section class="py-2">
-        <div class="m-md-3 p-5 portfolio-section">
-            <h2 class='section-heading'>Eliminatorias Anónimas</h2>
-            <p>Vik, manda taaaaablaaaaa! 🗣️</p>
-            <a class="btn btn-primary-custom" href="leaderboard.html">Leaderboard</a>
-        </div>
-    </section>
-
-    <div class="footer-container">
-        <a href="https://chat.whatsapp.com/2cUguIQ8AWhCTkfYLaixfi" target="_blank"><i class="footer-icon fab fa-whatsapp fa-2x"></i></a>
-        <p class='footer-link'>© 2025 José Daniel Cuéllar Lobo.</p>
-    </div>
 
     <div class="modal fade" id="resetModal" tabindex="-1" role="dialog" aria-labelledby="resetModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -378,11 +378,8 @@
 
                 //console.log("User signed in:", user.email, "UID:", user.uid);
 
-                // Show Admin Panel link if the user is the admin
-                if (currentUserId === ADMIN_UID) {
-                    adminNavLink.style.display = 'block';
-                } else {
-                    adminNavLink.style.display = 'none';
+                if (adminNavLink) {
+                    adminNavLink.style.display = currentUserId === ADMIN_UID ? 'block' : 'none';
                 }
 
                 console.log("User signed in:", user.email, "UID:", user.uid);
@@ -400,7 +397,7 @@
                 // Disable prediction form
                 setPredictionFormEnabled(false);
                 playerNameInput.value = ''; // Clear player name
-                predictionMessageDiv.textContent = 'Please sign in to submit predictions.';
+                predictionMessageDiv.textContent = 'Inicia sesion para enviar predicciones.';
                 predictionMessageDiv.style.color = 'orange';
                 authMessageDiv.textContent = ''; // Clear auth message
 
@@ -408,10 +405,11 @@
 
                 // Hide My Predictions section and clear its content
                 myPredictionsSection.style.display = 'none';
-                myPredictionsList.innerHTML = '<p class="text-center">No predictions submitted yet.</p>'; // Clear display
+                myPredictionsList.innerHTML = '<p class="text-center">Todavia no hay predicciones.</p>'; // Clear display
 
-                // Hide Admin Panel link when signed out
-                adminNavLink.style.display = 'none';
+                if (adminNavLink) {
+                    adminNavLink.style.display = 'none';
+                }
 
                 console.log("User signed out.");
             }
@@ -423,23 +421,23 @@
             const password = userPasswordInput.value;
 
             if (!email || !password) {
-                displayAuthMessage("Please enter both email and password.", true);
+                displayAuthMessage("Ingresa correo y contrasena.", true);
                 return;
             }
             if (password.length < 6) {
-                displayAuthMessage("Password should be at least 6 characters.", true);
+                displayAuthMessage("La contrasena debe tener al menos 6 caracteres.", true);
                 return;
             }
 
-            displayAuthMessage("Signing up...", false);
+            displayAuthMessage("Creando cuenta...", false);
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 console.log("User signed up and signed in:", userCredential.user.email);
-                displayAuthMessage("Account created successfully! You are now signed in.", false);
+                displayAuthMessage("Cuenta creada! Sesion iniciada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing up:", error.message);
-                displayAuthMessage(`Error signing up: ${error.message}`, true);
+                displayAuthMessage(`Error al crear cuenta: ${error.message}`, true);
             }
         });
 
@@ -448,30 +446,30 @@
             const password = userPasswordInput.value;
 
             if (!email || !password) {
-                displayAuthMessage("Please enter both email and password.", true);
+                displayAuthMessage("Ingresa correo y contrasena.", true);
                 return;
             }
 
-            displayAuthMessage("Signing in...", false);
+            displayAuthMessage("Iniciando sesion...", false);
             try {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 console.log("User signed in:", userCredential.user.email);
-                displayAuthMessage("Signed in successfully!", false);
+                displayAuthMessage("Sesion iniciada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing in:", error.message);
-                displayAuthMessage(`Error signing in: ${error.message}`, true);
+                displayAuthMessage(`Error al iniciar sesion: ${error.message}`, true);
             }
         });
 
         signOutButton.addEventListener('click', async () => {
             try {
                 await signOut(auth);
-                displayAuthMessage("Signed out successfully.", false);
+                displayAuthMessage("Sesion cerrada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing out:", error.message);
-                displayAuthMessage(`Error signing out: ${error.message}`, true);
+                displayAuthMessage(`Error al cerrar sesion: ${error.message}`, true);
             }
         });
 
@@ -479,7 +477,7 @@
         async function loadGames() {
             const predictionFormGamesDiv = document.getElementById('prediction-form-games');
 
-            predictionFormGamesDiv.innerHTML = 'Loading games for prediction...';
+            predictionFormGamesDiv.innerHTML = 'Cargando partidos...';
 
             try {
                 // Create a quick lookup map for team logos from the globally populated 'allTeams'
@@ -498,7 +496,7 @@
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    predictionFormGamesDiv.innerHTML = '<p>No games available for prediction.</p>';
+                    predictionFormGamesDiv.innerHTML = '<p>No hay partidos para pronosticar.</p>';
                     setPredictionFormEnabled(false);
                     return;
                 }
@@ -728,11 +726,11 @@
 
         async function loadMyPredictions() {
             if (!currentUserId) {
-                myPredictionsList.innerHTML = '<p class="text-center">Please sign in to see your predictions.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center">Inicia sesion para ver tus predicciones.</p>';
                 return;
             }
 
-            myPredictionsList.innerHTML = '<p class="text-center">Loading your predictions...</p>';
+            myPredictionsList.innerHTML = '<p class="text-center">Cargando tus predicciones...</p>';
 
             try {
                 const myPredictionsRef = collection(db, 'predictions');
@@ -854,9 +852,9 @@
                     predictionCard.innerHTML = `
                         <h3>${game.HomeTeam} vs ${game.AwayTeam}</h3>
                         <p><strong>Phase:</strong> ${phaseLabel}</p>
-                        <p><strong>Your Prediction:</strong> ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</p>
-                        <p><strong>Game Status:</strong> <span class="status ${game.Status ? game.Status.toLowerCase() : ''}">${game.Status || 'N/A'}</span></p>
-                        ${game.Status && game.Status.toLowerCase() === 'finished' ? `<p><strong>Actual Result:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}
+                        <p><strong>Tu prediccion:</strong> ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</p>
+                        <p><strong>Estado:</strong> <span class="status ${game.Status ? game.Status.toLowerCase() : ''}">${game.Status || 'N/A'}</span></p>
+                        ${game.Status && game.Status.toLowerCase() === 'finished' ? `<p><strong>Resultado real:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}
                         <p><small>Submitted: ${predictionTime}</small></p>
                     `;
                     myPredictionsList.appendChild(predictionCard);

@@ -115,6 +115,13 @@ Functionality:
 
 **Currently only `Lazio` is uncommented as a test.** Uncomment teams in `teamsData` array to enable uploads.
 
+### Upload Flags Automatically (from games)
+```bash
+node src/uploadFlags.js
+```
+This script reads team names from the `games` collection and fills `teams.logoUrl` with FlagCDN URLs.
+Set `FORCE_FLAG_LOGOS=true` if you want to overwrite existing non-flag logos.
+
 ## Rate Limiting
 
 TheSportsDB free tier: **~240 requests/day**
@@ -141,6 +148,7 @@ Check the browser/terminal console for detailed operation logs.
 | No fixtures returned | Team may have no upcoming matches in 14-day window |
 | Rate limit waiting messages | Normal behavior; API enforces 1 request/6 seconds |
 | "API key is not valid" | Update `THESPORTSDB_API_KEY` with your actual key |
+| "No flag code found" | Team name may not match a country name; add an alias in `src/uploadFlags.js` |
 
 ## Next Steps
 

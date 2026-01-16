@@ -1,51 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixtures - FIFA World Cup 2026</title>
+    <title>Calendario - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
+    <link rel="icon" href="./css/icon/favicon-ball.ico" />
 </head>
 <body class="bg-dark text-white">
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">World Cup 2026</a>
+        <a class="navbar-brand" href="index.html">WC26</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="index.html">Home</a>
+                    <a class="nav-link" href="index.html">Inicio</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="leaderboard.html">Leaderboard</a>
+                    <a class="nav-link" href="leaderboard.html">Tabla</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="game_weeks.html">Fases</a>
                 </li>
                 <li class="nav-item active">
-                    <a class="nav-link" href="fixtures.html">Fixtures <span class="sr-only">(current)</span></a>
+                    <a class="nav-link" href="fixtures.html">Calendario <span class="sr-only">(current)</span></a>
                 </li>
             </ul>
         </div>
     </nav>
 
     <div class="container py-4">
-        <h1 class="text-center mb-4">FIFA World Cup 2026 Fixtures</h1>
-        <p class="text-center text-muted mb-4">View all upcoming fixtures and results</p>
+        <section class="section-hero">
+            <div class="section-hero-content">
+                <span class="hero-badge">MUNDIAL 2026</span>
+                <h1 class="hero-title">Calendario completo</h1>
+                <p class="hero-subtitle">Partidos ordenados por fecha y grupos para que no te pierdas nada.</p>
+            </div>
+        </section>
         <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
-        <!-- Phase Selector -->
+        <!-- Filter Selector -->
         <div id="fixtures-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-            <h5 class="mb-3">Filter by Phase:</h5>
+            <h5 class="mb-3">Filtrar por grupo:</h5>
             <div id="fixtures-phase-buttons"></div>
         </div>
 
         <!-- Games List -->
         <div id="game-list" class="game-list">
-            <p class="loading-message">Loading games...</p>
+            <p class="loading-message">Cargando partidos...</p>
         </div>
     </div>
 
@@ -57,14 +63,14 @@
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { createPhaseSelector, updatePhaseSelectorState } from "./js/ui-helpers.js";
-        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
+        import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         // State
         let allGames = [];
-        let selectedPhase = null;
+        let selectedFilter = null;
         let allTeams = {};
 
         const gameListDiv = document.getElementById('game-list');
@@ -88,7 +94,7 @@
 
         // Load all games
         async function loadGames() {
-            gameListDiv.innerHTML = '<p class="loading-message">Loading games...</p>';
+            gameListDiv.innerHTML = '<p class="loading-message">Cargando partidos...</p>';
 
             try {
                 const gamesRef = collection(db, 'games');
@@ -99,7 +105,7 @@
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    gameListDiv.innerHTML = '<p>No games found.</p>';
+                    gameListDiv.innerHTML = '<p>No hay partidos.</p>';
                     return;
                 }
 
@@ -114,38 +120,46 @@
                     return timeA - timeB;
                 });
 
-                // Extract unique phases
-                const phaseSet = new Set();
+                // Build filter options (all, groups)
+                const groupSet = new Set();
                 allGames.forEach(game => {
-                    const stageKey = resolveStageKey(game);
-                    if (stageKey) {
-                        phaseSet.add(stageKey);
+                    const rawGroup = game.Group || game.group;
+                    if (rawGroup) {
+                        groupSet.add(String(rawGroup).toUpperCase());
                     }
                 });
 
-                const phaseList = sortStageKeys(Array.from(phaseSet));
+                const groupList = Array.from(groupSet).sort();
+                const filterOptions = [
+                    'ALL',
+                    ...groupList.map(group => `GROUP-${group}`)
+                ];
 
-                // Show selector if multiple phases
-                if (phaseList.length > 1) {
+                // Show selector if multiple options
+                if (filterOptions.length > 1) {
                     fixturesPhaseSelector.style.display = 'block';
-                    // Select the latest phase by default
-                    selectedPhase = phaseList[phaseList.length - 1];
+                    // Default: show all games by date (closest first)
+                    selectedFilter = 'ALL';
                     
                     createPhaseSelector(
-                        phaseList,
-                        (phaseKey) => {
-                            selectedPhase = phaseKey;
-                            updatePhaseSelectorState('fixtures-phase-buttons', phaseKey);
+                        filterOptions,
+                        (filterKey) => {
+                            selectedFilter = filterKey;
+                            updatePhaseSelectorState('fixtures-phase-buttons', filterKey);
                             displayFilteredGames();
                         },
                         'fixtures-phase-buttons',
-                        phaseList[phaseList.length - 1],
+                        'ALL',
                         'fixturesPhaseSelector',
-                        (phaseKey) => resolveStageLabel({ StageKey: phaseKey })
+                        (filterKey) => {
+                            if (filterKey === 'ALL') return 'All (closest first)';
+                            if (filterKey.startsWith('GROUP-')) return `Group ${filterKey.split('-')[1]}`;
+                            return filterKey;
+                        }
                     );
-                } else if (phaseList.length === 1) {
+                } else if (filterOptions.length === 1) {
                     fixturesPhaseSelector.style.display = 'none';
-                    selectedPhase = phaseList[0];
+                    selectedFilter = filterOptions[0];
                 }
 
                 displayFilteredGames();
@@ -158,12 +172,20 @@
 
         // Display filtered games
         function displayFilteredGames() {
-            const filteredGames = selectedPhase
-                ? allGames.filter(game => resolveStageKey(game) === selectedPhase)
+            const filteredGames = selectedFilter && selectedFilter !== 'ALL'
+                ? allGames.filter(game => {
+                    if (selectedFilter.startsWith('GROUP-')) {
+                        const group = selectedFilter.split('-')[1];
+                        const gameStage = String(game.Stage || game.stage || '').toUpperCase();
+                        const gameGroup = String(game.Group || game.group || '').toUpperCase();
+                        return gameStage === 'GROUP' && gameGroup === group;
+                    }
+                    return true;
+                })
                 : allGames;
 
             if (filteredGames.length === 0) {
-                gameListDiv.innerHTML = '<p class="text-center">No games for this phase.</p>';
+                gameListDiv.innerHTML = '<p class="text-center">No hay partidos para este filtro.</p>';
                 return;
             }
 
@@ -180,10 +202,13 @@
                 if (game.Status && game.Status.toLowerCase() === 'finished') {
                     const homeScore = game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?';
                     const awayScore = game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?';
-                    scoreDisplay = `<p><strong>Result:</strong> ${homeScore} - ${awayScore}</p>`;
+                    scoreDisplay = `<p><strong>Resultado:</strong> ${homeScore} - ${awayScore}</p>`;
                 }
 
-                const phaseLabel = resolveStageLabel(game);
+                let phaseLabel = resolveStageLabel(game);
+                if ((game.Stage || game.stage) === 'GROUP' && (game.Group || game.group)) {
+                    phaseLabel = `Grupo ${String(game.Group || game.group).toUpperCase()}`;
+                }
 
                 const gameCard = document.createElement('div');
                 gameCard.classList.add('app-card', 'game-card');
@@ -200,9 +225,9 @@
                             <p class="team-name">${game.AwayTeam}</p>
                         </div>
                     </div>
-                    <p><strong>Phase:</strong> ${phaseLabel}</p> 
-                    <p><strong>Kick-off:</strong> ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }) || 'N/A'}</p>
-                    <p><strong>Status:</strong> <span class="status ${statusClass}">${game.Status || 'N/A'}</span></p>
+                    <p><strong>Fase:</strong> ${phaseLabel}</p>
+                    <p><strong>Inicio:</strong> ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }) || 'N/A'}</p>
+                    <p><strong>Estado:</strong> <span class="status ${statusClass}">${game.Status || 'N/A'}</span></p>
                     ${scoreDisplay}
                 `;
                 gameListDiv.appendChild(gameCard);

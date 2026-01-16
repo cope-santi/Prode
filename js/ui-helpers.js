@@ -127,11 +127,11 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
     const contentEl = document.getElementById('player-history-content');
 
     const playerName = userDisplayNames[userId] || userId;
-    titleEl.textContent = `${playerName} - Prediction History`;
+    titleEl.textContent = `${playerName} - Historial de predicciones`;
     contentEl.innerHTML = '';
     const loading = document.createElement('p');
     loading.style.color = '#bdbdbd';
-    loading.textContent = 'Loading predictions...';
+    loading.textContent = 'Cargando predicciones...';
     contentEl.appendChild(loading);
     modal.style.display = 'block';
 
@@ -148,7 +148,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             contentEl.innerHTML = '';
             const emptyMessage = document.createElement('p');
             emptyMessage.style.color = '#bdbdbd';
-            emptyMessage.textContent = 'No predictions found for this player.';
+            emptyMessage.textContent = 'No hay predicciones para este jugador.';
             contentEl.appendChild(emptyMessage);
             return;
         }
@@ -185,9 +185,9 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
         statsContainer.appendChild(statsGrid);
 
         const statsItems = [
-            { value: playerStats.totalPoints, color: '#76ff03', label: 'Total Points' },
-            { value: playerStats.perfectScoresCount, color: '#00e5ff', label: 'Perfect Scores' },
-            { value: playerStats.fechasWonCount, color: '#ffeb3b', label: 'Phases Won' }
+            { value: playerStats.totalPoints, color: '#76ff03', label: 'Puntos totales' },
+            { value: playerStats.perfectScoresCount, color: '#00e5ff', label: 'Perfectos' },
+            { value: playerStats.fechasWonCount, color: '#ffeb3b', label: 'Fases ganadas' }
         ];
 
         statsItems.forEach(item => {
@@ -243,7 +243,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             predictedSpan.style.marginLeft = '8px';
             const predictedHome = pred.predictedHomeScore ?? '-';
             const predictedAway = pred.predictedAwayScore ?? '-';
-            predictedSpan.textContent = `Predicted: ${predictedHome} - ${predictedAway}`;
+            predictedSpan.textContent = `Prediccion: ${predictedHome} - ${predictedAway}`;
 
             meta.appendChild(phaseSpan);
             meta.appendChild(predictedSpan);
