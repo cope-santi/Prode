@@ -134,3 +134,13 @@ node scripts/sync/tests/thesportsdb-mapper.test.js
 3. Despliega con `firebase deploy --only hosting`.
 
 > La aplicación es exclusivamente un prode del FIFA World Cup 2026. No hay lógica multi-torneo ni dropdowns de liga: todo se fija en ese campeonato.
+
+## Resolver conflictos de merge (guía rápida)
+
+1. Sincronizá tu rama: `git fetch origin && git pull`.
+2. Mergeá la rama base (por ejemplo `main`): `git merge origin/main`.
+3. Revisá los archivos con conflicto: `git status`.
+4. Editá cada archivo, resolvé los bloques `<<<<<<<`, `=======`, `>>>>>>>` y guardá.
+5. Marcá los conflictos como resueltos: `git add <archivo>`.
+6. Confirmá el merge: `git commit -m "Resolve merge conflicts"`.
+7. Empujá los cambios: `git push`.
