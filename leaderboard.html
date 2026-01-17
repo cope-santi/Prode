@@ -6,32 +6,12 @@
     <title>Tabla - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
+    <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
 </head>
 <body class="bg-dark text-white">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">WC26</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">Inicio</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="leaderboard.html">Tabla <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="game_weeks.html">Fases</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="fixtures.html">Calendario</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+    <header id="app-navbar"></header>
 
     <div class="container py-4">
         <section class="section-hero">
@@ -73,16 +53,22 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script type="module">
+        import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { calculatePoints, calculatePlayerStats } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { renderLeaderboardTable, createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
+        mountNavbar({ activeKey: "leaderboard" });
+
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3';
 
         // UI Elements
         const allGamesResultsContainer = document.getElementById('all-games-results-container');
@@ -91,6 +77,18 @@
 
         // Store user display names for modal
         let userDisplayNamesGlobal = {};
+        const statusLabelMap = {
+            finished: 'Finalizado',
+            live: 'En vivo',
+            in_play: 'En vivo',
+            upcoming: 'Próximo'
+        };
+        const statusClassMap = {
+            finished: 'finished',
+            live: 'ongoing',
+            in_play: 'ongoing',
+            upcoming: 'upcoming'
+        };
 
         // Create player history modal on page load
         createPlayerHistoryModal();
@@ -101,6 +99,22 @@
         });
 
         loadSyncStatus();
+
+        function updateNavbarForUser(user) {
+            const isAdmin = user && user.uid === ADMIN_UID;
+            const accountLabel = user ? 'Perfil' : 'Ingresar';
+            const accountHref = user ? 'index.html#auth-ui' : 'crearCuenta.html';
+            mountNavbar({
+                activeKey: 'leaderboard',
+                accountLabel,
+                accountHref,
+                showAdmin: isAdmin
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            updateNavbarForUser(user);
+        });
 
         // --- Load All Results Function ---
         async function loadAllResults() {
@@ -139,7 +153,7 @@
                 const userNames = {};
                 predictions.forEach(pred => {
                     const userId = pred.userId || 'unknown';
-                    const playerName = pred.playerName || 'Anonymous';
+                    const playerName = pred.playerName || 'Anónimo';
                     userNames[userId] = playerName;
                 });
 
@@ -172,55 +186,65 @@
                     // Get predictions for this game
                     const gamePredictions = predictions.filter(p => p.gameId === game.id);
 
-                    const actualResultDisplay = (game.Status === 'finished' || game.Status === 'live') && game.HomeScore !== null && game.AwayScore !== null
+                    const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+                    const statusLabel = statusLabelMap[statusValue] || statusValue;
+                    const statusClass = statusClassMap[statusValue] || 'upcoming';
+                    const hasFinalScore = game.HomeScore !== null && game.AwayScore !== null;
+                    const actualResultDisplay = (statusValue === 'finished' || statusValue === 'live' || statusValue === 'in_play') && hasFinalScore
                         ? `<p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>`
-                        : `<p class="actual-result">Resultado real: Aun no disponible</p>`;
+                        : `<p class="actual-result">Resultado real: Aún no disponible</p>`;
 
-                    const predictionsHTML = (game.Status === 'finished' || game.Status === 'live')
+                    const predictionsHTML = (statusValue === 'finished' || statusValue === 'live' || statusValue === 'in_play')
                         ? gamePredictions.length > 0
                             ? gamePredictions.map(prediction => {
                                 const points = calculatePoints(prediction, game);
                                 let pointsDisplay = '';
                                 let pointsClass = 'text-muted';
+                                const predictedHome = prediction.predictedHomeScore ?? '-';
+                                const predictedAway = prediction.predictedAwayScore ?? '-';
 
                                 if (points === null) {
                                     pointsDisplay = 'N/A';
                                     pointsClass = 'pending';
                                 } else if (points === 10) {
-                                    pointsDisplay = `(${points} points - Perfect Score!)`;
+                                    pointsDisplay = `(${points} puntos - perfecto)`;
                                     pointsClass = 'text-success';
                                 } else if (points >= 5) {
-                                    pointsDisplay = `(${points} points)`;
+                                    pointsDisplay = `(${points} puntos)`;
                                     pointsClass = 'text-info';
                                 } else if (points > 0) {
-                                    pointsDisplay = `(${points} points)`;
+                                    pointsDisplay = `(${points} puntos)`;
                                     pointsClass = 'text-warning';
                                 } else {
-                                    pointsDisplay = `(${points} points)`;
+                                    pointsDisplay = `(${points} puntos)`;
                                     pointsClass = 'text-danger';
                                 }
 
                                 return `
                                     <div class="prediction-entry">
-                                        <span><strong>${prediction.playerName || 'Anonimo'}</strong> predijo: ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</span>
+                                        <span><strong>${prediction.playerName || 'Anónimo'}</strong> predijo: ${predictedHome} - ${predictedAway}</span>
                                         <span class="score ${pointsClass}">${pointsDisplay}</span>
                                     </div>
                                 `;
                             }).join('')
-                            : '<p class="text-muted">No predictions submitted for this game yet.</p>'
-                        : '<p class="text-muted">Predictions are hidden until the game is finished.</p>';
+                            : '<p class="text-muted">Todavía no hay predicciones para este partido.</p>'
+                        : '<p class="text-muted">Las predicciones se muestran cuando finaliza el partido.</p>';
 
                     const phaseLabel = resolveStageLabel(game);
+                    const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
+                    const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
+                        ? kickoffDate.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+                        : 'Fecha por confirmar';
 
                     gameCard.innerHTML = `
                         <h3 class="game-header">
                             ${game.HomeTeam} vs ${game.AwayTeam}
-                            <span class="game-status ${game.Status}">${game.Status.toUpperCase()}</span>
+                            <span class="game-status ${statusClass}">${statusLabel}</span>
                         </h3>
-                        <p class="game-info">${phaseLabel} - ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })}</p>
+                        <p class="game-info">${phaseLabel} - ${kickoffLabel}</p>
                         ${actualResultDisplay}
                         <hr>
-                        <h4 class="mb-3">All Predictions:</h4>
+                        <h4 class="mb-3">Predicciones:</h4>
                         <div class="predictions-list">
                             ${predictionsHTML}
                         </div>
@@ -230,7 +254,7 @@
 
             } catch (error) {
                 console.error("Error loading all results: ", error);
-                allGamesResultsContainer.innerHTML = '<p class="text-center" style="color: red;">Error loading results. Please try again later.</p>';
+                allGamesResultsContainer.innerHTML = '<p class="text-center" style="color: red;">Error al cargar resultados. Intenta nuevamente más tarde.</p>';
             }
         }
 
