@@ -6,32 +6,12 @@
     <title>Fases - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
+    <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
 </head>
 <body class="bg-dark text-white">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.html">WC26</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ml-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="index.html">Inicio</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="leaderboard.html">Tabla</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="game_weeks.html">Fases <span class="sr-only">(current)</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="fixtures.html">Calendario</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
+    <header id="app-navbar"></header>
 
     <div class="container-fluid py-4">
         <section class="section-hero">
@@ -67,23 +47,23 @@
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-color perfect"></div>
-                    <span>Perfect (10 pts)</span>
+                    <span>Perfecto (10 pts)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color high"></div>
-                    <span>High (7-9 pts)</span>
+                    <span>Alto (7-9 pts)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color medium"></div>
-                    <span>Medium (4-6 pts)</span>
+                    <span>Medio (4-6 pts)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color low"></div>
-                    <span>Low (1-3 pts)</span>
+                    <span>Bajo (1-3 pts)</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color pending"></div>
-                    <span>Pending</span>
+                    <span>Pendiente</span>
                 </div>
             </div>
         </div>
@@ -93,12 +73,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script type="module">
+        import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { calculatePoints, calculatePlayerStats, getPlayerStats, getScoreClass } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
+
+        mountNavbar({ activeKey: "matches" });
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -166,7 +149,7 @@
                 await loadOverallPlayerStats(gamesSnapshot);
 
                 if (phaseList.length === 0) {
-                    matrixContainer.innerHTML = '<p class="empty-message">No phases found.</p>';
+                    matrixContainer.innerHTML = '<p class="empty-message">No se encontraron fases.</p>';
                     return;
                 }
 
@@ -175,7 +158,7 @@
 
             } catch (error) {
                 console.error("Error loading phases: ", error);
-                matrixContainer.innerHTML = '<p class="empty-message" style="color: red;">Error loading phases. Please try again later.</p>';
+                matrixContainer.innerHTML = '<p class="empty-message" style="color: red;">Error al cargar fases. Intenta nuevamente más tarde.</p>';
             }
         }
 
@@ -371,7 +354,7 @@
 
             } catch (error) {
                 console.error("Error loading phase results: ", error);
-                matrixContainer.innerHTML = `<p class="empty-message" style="color: red;">Error loading results: ${error.message}</p>`;
+                matrixContainer.innerHTML = `<p class="empty-message" style="color: red;">Error al cargar resultados: ${error.message}</p>`;
             }
         }
 
