@@ -52,32 +52,17 @@
     <div class="container">
       <div class="app-card prediction-section">
         <h1 class="mb-3">Cuenta Prode Mundial 2026</h1>
-        <p class="section-lede">Ingresá o creá tu cuenta para empezar a pronosticar.</p>
-
-        <div class="row mt-4">
-          <div class="col-md-6 mb-3">
-            <div class="app-card h-100 text-start">
-              <h3>Iniciar sesión</h3>
-              <p>Si ya tenés cuenta, ingresá desde la pantalla principal.</p>
-              <a class="btn btn-primary-custom" href="index.html#auth-ui">Ir a iniciar sesión</a>
-            </div>
-          </div>
-          <div class="col-md-6 mb-3">
-            <div class="app-card h-100 text-start">
-              <h3>Crear cuenta</h3>
-              <p>Registrate con tu correo y empezá a sumar puntos.</p>
-              <a class="btn btn-secondary-custom" href="index.html#auth-ui">Ir a crear cuenta</a>
-            </div>
-          </div>
-        </div>
+        <p class="section-lede">La creación de cuenta y el ingreso se realizan desde el home.</p>
+        <a class="btn btn-primary-custom" href="index.html#auth-ui">Ir al home</a>
       </div>
-      <p class="footer-link mt-4">© <span id="footer-year"></span> Prode Mundial 2026.</p>
     </div>
   </section>
 
   <script type="module">
     import { mountNavbar } from "./js/layout.js";
     mountNavbar({ activeKey: "account", accountLabel: "Cuenta", accountHref: "crearCuenta.html" });
-    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    setTimeout(() => {
+      window.location.href = "index.html#auth-ui";
+    }, 1200);
   </script>
 </body>
