@@ -23,6 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
 
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
 
     <script src="https://kit.fontawesome.com/e32607c50a.js" crossorigin="anonymous"></script>
@@ -31,34 +32,8 @@
 
 
 <body>
-    <nav class="navbar sticky-top navbar-expand-sm navbar-dark bg-dark ">
-        <div class="container d-flex flex-column flex-md-row justify-content-between">
-            <a class="navbar-brand" href="index.html">WC26</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarsExample03">
-                <ul class="navbar-nav me-auto mb-2 mb-sm-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="leaderboard.html">Tabla</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="game_weeks.html">Fases</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="fixtures.html">Calendario</a>
-                    </li>
-                    <li class="nav-item" id="adminNavLink" style="display: none;">
-                        <a class="nav-link" href="admin.html">Admin</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#auth-ui">Iniciar sesion</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <header id="app-navbar"></header>
+    <div id="matches-subnav"></div>
 
 
     <header class="hero">
@@ -122,12 +97,12 @@
         <div class="container">
             <div class="app-card prediction-section">
                 <h2>Carga tus predicciones</h2>
-                <p class="section-lede">Tres pasos y listo: inicia sesion, completa marcadores y envia.</p>
+                <p class="section-lede">Tres pasos y listo: inicia sesión, completa marcadores y envía.</p>
                 <div class="quick-steps">
                     <div class="quick-step">
                         <span class="quick-step-number">1</span>
                         <div class="quick-step-text">
-                            <span class="quick-step-title">Inicia sesion</span>
+                            <span class="quick-step-title">Inicia sesión</span>
                             <span class="quick-step-note">Con tu correo</span>
                         </div>
                     </div>
@@ -141,7 +116,7 @@
                     <div class="quick-step">
                         <span class="quick-step-number">3</span>
                         <div class="quick-step-text">
-                            <span class="quick-step-title">Envia todo</span>
+                            <span class="quick-step-title">Envía todo</span>
                             <span class="quick-step-note">Guarda tus predicciones</span>
                         </div>
                     </div>
@@ -153,10 +128,10 @@
                             <input type="email" id="userEmail" class="form-control" placeholder="Ingresa tu correo" required>
                         </div>
                         <div class="form-group mb-3">
-                            <label for="userPassword">Contrasena:</label>
-                            <input type="password" id="userPassword" class="form-control" placeholder="Ingresa tu contrasena" required>
+                            <label for="userPassword">Contraseña:</label>
+                            <input type="password" id="userPassword" class="form-control" placeholder="Ingresa tu contraseña" required>
                             <div class="text-right mt-1">
-                                <a href="#" id="forgotPasswordLink" class="text-muted small">Olvidaste tu contrasena?</a>
+                                <a href="#" id="forgotPasswordLink" class="text-muted small">¿Olvidaste tu contraseña?</a>
                             </div>
                         </div>
                         <button id="signInButton" class="btn btn-success me-2">Entrar</button>
@@ -166,7 +141,7 @@
 
                     <div id="user-status-display" style="display: none;">
                         <p>Bienvenido, <span id="userNameDisplay" style="font-weight: bold;"></span>!</p>
-                        <p>Sesion iniciada con: <span id="userEmailDisplay" style="font-weight: bold;"></span></p>
+                        <p>Sesión iniciada con: <span id="userEmailDisplay" style="font-weight: bold;"></span></p>
                         <button id="signOutButton" class="btn btn-danger mt-2">Salir</button>
                     </div>
                 </div>
@@ -180,7 +155,7 @@
                 </div>
 
                 <button id="submitPredictions" class="btn btn-primary-custom" disabled>Enviar predicciones</button>
-                <p id="message" style="color: green; font-weight: bold; margin-top: 15px;"></p>
+                <p id="message" class="status-message"></p>
             </div>
 
             <hr class="my-5">
@@ -193,7 +168,7 @@
                     <div id="my-predictions-phase-buttons"></div>
                 </div>
                 <div id="my-predictions-list" class="game-list">
-                    <p class="text-center">Todavia no hay predicciones.</p>
+                    <p class="text-center">Todavía no hay predicciones.</p>
                 </div>
             </div>
         </div>
@@ -203,7 +178,7 @@
     <div class="modal fade" id="resetModal" tabindex="-1" role="dialog" aria-labelledby="resetModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content bg-dark text-white"> <div class="modal-header">
-                    <h5 class="modal-title text-white" id="resetModalLabel">Password Reset</h5>
+                    <h5 class="modal-title text-white" id="resetModalLabel">Restablecer contraseña</h5>
                     <button type="button" class="close text-white" id="closeHeaderButton" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -211,7 +186,7 @@
                 <div class="modal-body" id="resetModalBody">
                     </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="closeFooterButton">Close</button>
+                    <button type="button" class="btn btn-secondary" id="closeFooterButton">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -219,6 +194,7 @@
 
 
     <script type="module">
+        import { mountNavbar } from "./js/layout.js";
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, getDoc, setDoc, deleteDoc, query, orderBy, limit, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -228,6 +204,8 @@
         import { firebaseConfig } from "./js/firebase-config.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
         
+        mountNavbar("matches", "predict");
+
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app); // Get a reference to the Firestore database
@@ -301,9 +279,9 @@
 
         function getLockMessage(stageId) {
             const prereq = STAGE_PREREQ[stageId];
-            if (!prereq) return 'Locked until previous phase is finished.';
+            if (!prereq) return 'Bloqueado hasta que finalice la fase anterior.';
             const label = resolveStageLabel({ StageKey: prereq });
-            return `Locked until ${label} is finished.`;
+            return `Bloqueado hasta que finalice ${label}.`;
         }
 
         // --- UI Element References ---
@@ -350,6 +328,20 @@
             authMessageDiv.style.color = isError ? 'red' : 'green';
         }
 
+        function setPredictionMessage(message, type = 'info') {
+            predictionMessageDiv.textContent = message;
+            predictionMessageDiv.classList.remove('loading-message', 'error-message', 'info-message', 'success-message');
+            const typeClassMap = {
+                loading: 'loading-message',
+                error: 'error-message',
+                info: 'info-message',
+                success: 'success-message'
+            };
+            if (typeClassMap[type]) {
+                predictionMessageDiv.classList.add(typeClassMap[type]);
+            }
+        }
+
         // --- Authentication State Listener ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -367,7 +359,7 @@
                 // Enable prediction form and pre-fill player name
                 setPredictionFormEnabled(true);
                 playerNameInput.value = user.email.split('@')[0]; // Pre-fill with part of email
-                predictionMessageDiv.textContent = ''; // Clear previous messages
+                setPredictionMessage('');
                 authMessageDiv.textContent = ''; // Clear auth message
 
                 //console.log("User signed in:", user.email, "UID:", user.uid);
@@ -397,15 +389,14 @@
                 // Disable prediction form
                 setPredictionFormEnabled(false);
                 playerNameInput.value = ''; // Clear player name
-                predictionMessageDiv.textContent = 'Inicia sesion para enviar predicciones.';
-                predictionMessageDiv.style.color = 'orange';
+                setPredictionMessage('Inicia sesión para enviar predicciones.', 'info');
                 authMessageDiv.textContent = ''; // Clear auth message
 
                 //console.log("User signed out.");
 
                 // Hide My Predictions section and clear its content
                 myPredictionsSection.style.display = 'none';
-                myPredictionsList.innerHTML = '<p class="text-center">Todavia no hay predicciones.</p>'; // Clear display
+                myPredictionsList.innerHTML = '<p class="text-center">Todavía no hay predicciones.</p>'; // Clear display
 
                 if (adminNavLink) {
                     adminNavLink.style.display = 'none';
@@ -421,11 +412,11 @@
             const password = userPasswordInput.value;
 
             if (!email || !password) {
-                displayAuthMessage("Ingresa correo y contrasena.", true);
+                displayAuthMessage("Ingresa correo y contraseña.", true);
                 return;
             }
             if (password.length < 6) {
-                displayAuthMessage("La contrasena debe tener al menos 6 caracteres.", true);
+                displayAuthMessage("La contraseña debe tener al menos 6 caracteres.", true);
                 return;
             }
 
@@ -433,7 +424,7 @@
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 console.log("User signed up and signed in:", userCredential.user.email);
-                displayAuthMessage("Cuenta creada! Sesion iniciada.", false);
+                displayAuthMessage("Cuenta creada. Sesión iniciada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing up:", error.message);
@@ -446,30 +437,30 @@
             const password = userPasswordInput.value;
 
             if (!email || !password) {
-                displayAuthMessage("Ingresa correo y contrasena.", true);
+                displayAuthMessage("Ingresa correo y contraseña.", true);
                 return;
             }
 
-            displayAuthMessage("Iniciando sesion...", false);
+            displayAuthMessage("Iniciando sesión...", false);
             try {
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 console.log("User signed in:", userCredential.user.email);
-                displayAuthMessage("Sesion iniciada.", false);
+                displayAuthMessage("Sesión iniciada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing in:", error.message);
-                displayAuthMessage(`Error al iniciar sesion: ${error.message}`, true);
+                displayAuthMessage(`Error al iniciar sesión: ${error.message}`, true);
             }
         });
 
         signOutButton.addEventListener('click', async () => {
             try {
                 await signOut(auth);
-                displayAuthMessage("Sesion cerrada.", false);
+                displayAuthMessage("Sesión cerrada.", false);
                 // No need to manually update UI here, onAuthStateChanged handles it
             } catch (error) {
                 console.error("Error signing out:", error.message);
-                displayAuthMessage(`Error al cerrar sesion: ${error.message}`, true);
+                displayAuthMessage(`Error al cerrar sesión: ${error.message}`, true);
             }
         });
 
@@ -533,7 +524,7 @@
                         }
 
                         const disabledAttr = isLocked ? 'disabled data-locked="true"' : '';
-                        const lockNotice = isLocked ? `<p class="text-warning" style="margin-top: 8px; font-size: 0.9rem;">${lockMessage}</p>` : '';
+                        const lockNotice = isLocked ? `<p class="lock-notice">${lockMessage}</p>` : '';
 
                         predictionGameCard.innerHTML = `
                             <div class="teams-row">
@@ -547,7 +538,7 @@
                                     <span class="team-name">${game.AwayTeam}</span>
                                 </div>    
                             </div>
-                            <p class="game-detail-line"><strong>Phase:</strong> ${stageLabel}</p>       
+                            <p class="game-detail-line"><strong>Fase:</strong> ${stageLabel}</p>       
                             <div class="prediction-inputs">
                                 <input type="number" data-game-id="${gameId}" data-team="home" placeholder="H" min="0" class="score-input" ${disabledAttr}>
                                 <span class="score-separator">-</span>
@@ -567,7 +558,7 @@
 
                 if (gamesForPrediction.length === 0) {
                     setPredictionFormEnabled(false);
-                    predictionFormGamesDiv.innerHTML = '<p>No upcoming games to predict.</p>';
+                    predictionFormGamesDiv.innerHTML = '<p>No hay partidos próximos para predecir.</p>';
                 } else {
                     const hasUnlockedGames = gamesForPrediction.some(game => !game.isLocked);
                     setPredictionFormEnabled(!!currentUserId && hasUnlockedGames);
@@ -575,7 +566,7 @@
 
             } catch (error) {
                 console.error("Error fetching games: ", error);
-                predictionFormGamesDiv.innerHTML = '<p>Error loading games for prediction.</p>';
+                predictionFormGamesDiv.innerHTML = '<p>Error al cargar partidos para predicción.</p>';
                 setPredictionFormEnabled(false);
             }
         }
@@ -584,21 +575,18 @@
 
         async function submitPredictions() {
             if (!currentUserId) {
-                predictionMessageDiv.textContent = 'You must be signed in to submit predictions!';
-                predictionMessageDiv.style.color = 'red';
+                setPredictionMessage('Debes iniciar sesión para enviar predicciones.', 'error');
                 return;
             }
 
             const playerName = playerNameInput.value.trim();
             if (!playerName) {
-                predictionMessageDiv.textContent = 'Please enter your name for the prediction!';
-                predictionMessageDiv.style.color = 'red';
+                setPredictionMessage('Ingresa tu nombre para guardar la predicción.', 'error');
                 return;
             }
 
             setPredictionFormEnabled(false); // Disable button and inputs to prevent double submission
-            predictionMessageDiv.textContent = '<p class="loading-message">Submitting predictions...</p>';
-            predictionMessageDiv.style.color = 'orange';
+            setPredictionMessage('Enviando predicciones...', 'loading');
 
             const predictionInputs = document.querySelectorAll('#prediction-form-games input[type="number"]');
             const predictions = {};
@@ -700,18 +688,15 @@
             }
 
             if (successCount > 0 && !errorOccurred) {
-                predictionMessageDiv.textContent = `Successfully submitted ${successCount} prediction(s)!`;
-                predictionMessageDiv.style.color = 'green';
+                setPredictionMessage(`Se enviaron ${successCount} predicción(es) correctamente.`, 'success');
                 // Clear prediction input fields, keep player name
                 predictionInputs.forEach(input => input.value = '');
                 // ADD THIS LINE BELOW to refresh "My Predictions"
                 loadMyPredictions(); // Refresh "My Predictions" after submission!
             } else if (successCount > 0 && errorOccurred) {
-                predictionMessageDiv.textContent = `Submitted ${successCount} prediction(s) with some errors. Check console.`;
-                predictionMessageDiv.style.color = 'orange';
+                setPredictionMessage(`Se enviaron ${successCount} predicción(es) con algunos errores. Revisa la consola.`, 'info');
             } else {
-                predictionMessageDiv.textContent = 'No valid predictions submitted.';
-                predictionMessageDiv.style.color = 'red';
+                setPredictionMessage('No se enviaron predicciones válidas.', 'error');
             }
             // Ensure this is outside the if/else if/else block
             setPredictionFormEnabled(true);
@@ -726,7 +711,7 @@
 
         async function loadMyPredictions() {
             if (!currentUserId) {
-                myPredictionsList.innerHTML = '<p class="text-center">Inicia sesion para ver tus predicciones.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center">Inicia sesión para ver tus predicciones.</p>';
                 return;
             }
 
@@ -742,7 +727,7 @@
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    myPredictionsList.innerHTML = '<p class="text-center">You have not submitted any predictions yet.</p>';
+                    myPredictionsList.innerHTML = '<p class="text-center">Todavía no cargaste predicciones.</p>';
                     myPredictionsPhaseSelector.style.display = 'none';
                     return;
                 }
@@ -810,7 +795,7 @@
 
             } catch (error) {
                 console.error("Error loading user predictions: ", error);
-                myPredictionsList.innerHTML = '<p class="text-center" style="color: red;">Error loading your predictions. Please try again later.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center" style="color: red;">Error al cargar tus predicciones. Intenta nuevamente más tarde.</p>';
             }
         }
 
@@ -824,7 +809,7 @@
                 : allUserPredictions;
 
             if (filteredPredictions.length === 0) {
-                myPredictionsList.innerHTML = '<p class="text-center">No predictions for this phase.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center">No hay predicciones para esta fase.</p>';
                 return;
             }
 
@@ -849,13 +834,25 @@
 
                     const phaseLabel = resolveStageLabel(game);
 
+                    const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+                    const statusLabelMap = {
+                        finished: 'Finalizado',
+                        live: 'En vivo',
+                        in_play: 'En vivo',
+                        upcoming: 'Próximo'
+                    };
+                    const statusClass = statusValue === 'in_play' ? 'live' : statusValue;
+                    const statusLabel = statusLabelMap[statusValue] || statusValue;
+                    const predictedHome = prediction.predictedHomeScore ?? '-';
+                    const predictedAway = prediction.predictedAwayScore ?? '-';
+
                     predictionCard.innerHTML = `
                         <h3>${game.HomeTeam} vs ${game.AwayTeam}</h3>
-                        <p><strong>Phase:</strong> ${phaseLabel}</p>
-                        <p><strong>Tu prediccion:</strong> ${prediction.predictedHomeScore} - ${prediction.predictedAwayScore}</p>
-                        <p><strong>Estado:</strong> <span class="status ${game.Status ? game.Status.toLowerCase() : ''}">${game.Status || 'N/A'}</span></p>
-                        ${game.Status && game.Status.toLowerCase() === 'finished' ? `<p><strong>Resultado real:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}
-                        <p><small>Submitted: ${predictionTime}</small></p>
+                        <p><strong>Fase:</strong> ${phaseLabel}</p>
+                        <p><strong>Tu predicción:</strong> ${predictedHome} - ${predictedAway}</p>
+                        <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
+                        ${statusValue === 'finished' ? `<p><strong>Resultado real:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}
+                        <p><small>Enviado: ${predictionTime}</small></p>
                     `;
                     myPredictionsList.appendChild(predictionCard);
                 }
@@ -911,13 +908,13 @@
             
             // Check if email is empty
             if (!email) {
-                resetModalBody.innerHTML = 'Please enter your email address in the field above before clicking "Forgot Password."';
+                resetModalBody.innerHTML = 'Ingresa tu correo en el campo anterior antes de seleccionar "Olvidé mi contraseña".';
                 resetModal.show(); // <-- Use the NATIVE JS modal instance
                 return;
             }
 
             // Clear previous message
-            resetModalBody.innerHTML = 'Sending password reset link...';
+            resetModalBody.innerHTML = 'Enviando enlace de restablecimiento de contraseña...';
             resetModal.show(); // <-- Use the NATIVE JS modal instance to show loading state
 
             try {
@@ -926,18 +923,18 @@
 
                 // 3. Success Feedback
                 resetModalBody.innerHTML = `
-                    <p>Password reset email successfully sent to <strong>${email}</strong>.</p>
-                    <p>Please check your inbox (and spam folder) for instructions on resetting your password.</p>
+                    <p>Se envió el correo de restablecimiento a <strong>${email}</strong>.</p>
+                    <p>Revisa tu bandeja de entrada (y la carpeta de spam) para seguir las instrucciones.</p>
                 `;
 
             } catch (error) {
-                let errorMessage = "An error occurred while sending the reset email. Please try again.";
+                let errorMessage = "Ocurrió un error al enviar el correo de restablecimiento. Intenta de nuevo.";
                 
                 // Handle common Firebase errors
                 if (error.code === 'auth/user-not-found') {
-                    errorMessage = "No user found with that email address.";
+                    errorMessage = "No encontramos un usuario con ese correo.";
                 } else if (error.code === 'auth/invalid-email') {
-                    errorMessage = "The email address is not valid.";
+                    errorMessage = "El correo ingresado no es válido.";
                 } else {
                     console.error("Password reset error:", error);
                     // Fallback for unexpected errors
