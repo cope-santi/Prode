@@ -201,6 +201,9 @@
         }
 
         function updateStageUI() {
+            if (!stageSelect || !groupFilterField || !groupSelect || !viewToggleRow) {
+                return;
+            }
             const stageValue = stageSelect.value;
             const isGroup = stageValue === 'GROUP';
             groupFilterField.style.display = isGroup ? 'block' : 'none';
@@ -217,10 +220,10 @@
         }
 
         function getFilteredGames() {
-            const stageValue = stageSelect.value;
-            const groupValue = groupSelect.value;
-            const searchTerm = teamSearchInput.value.trim().toLowerCase();
-            const upcomingOnly = upcomingToggle.checked;
+            const stageValue = stageSelect ? stageSelect.value : '';
+            const groupValue = groupSelect ? groupSelect.value : 'ALL';
+            const searchTerm = teamSearchInput ? teamSearchInput.value.trim().toLowerCase() : '';
+            const upcomingOnly = upcomingToggle ? upcomingToggle.checked : false;
 
             return allGames.filter(game => {
                 const stage = String(game.Stage || game.stage || '').toUpperCase();
@@ -372,13 +375,21 @@
             await loadTeams();
             await loadGames();
 
-            stageSelect.addEventListener('change', () => {
-                updateStageUI();
-                displayFilteredGames();
-            });
-            groupSelect.addEventListener('change', displayFilteredGames);
-            teamSearchInput.addEventListener('input', displayFilteredGames);
-            upcomingToggle.addEventListener('change', displayFilteredGames);
+            if (stageSelect) {
+                stageSelect.addEventListener('change', () => {
+                    updateStageUI();
+                    displayFilteredGames();
+                });
+            }
+            if (groupSelect) {
+                groupSelect.addEventListener('change', displayFilteredGames);
+            }
+            if (teamSearchInput) {
+                teamSearchInput.addEventListener('input', displayFilteredGames);
+            }
+            if (upcomingToggle) {
+                upcomingToggle.addEventListener('change', displayFilteredGames);
+            }
             viewToggleButtons.forEach(button => {
                 button.addEventListener('click', () => handleViewToggle(button.dataset.view));
             });

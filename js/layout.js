@@ -25,7 +25,7 @@ export function mountNavbar(options = {}) {
     container.innerHTML = `
         <nav class="topbar">
             <div class="topbar__inner">
-                <a class="topbar__brand" href="index.html">Prode</a>
+                <a class="topbar__brand" href="fixtures.html">Prode</a>
                 <div class="topbar__links">
                     ${linksHtml}
                     ${adminLinkHtml}

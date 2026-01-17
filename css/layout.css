@@ -154,6 +154,15 @@ body {
     color: #ffffff;
 }
 
+.filter-field select option {
+    color: #0b1220;
+    background: #ffffff;
+}
+
+.filter-field input::placeholder {
+    color: rgba(255, 255, 255, 0.65);
+}
+
 .filter-field select:focus,
 .filter-field input[type="text"]:focus {
     outline: none;
