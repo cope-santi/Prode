@@ -220,6 +220,7 @@
         let currentUserEmail = null; // To store the authenticated user's email
         let allTeams = [];
         let stageUnlocks = {};
+        let userPredictionsByGame = new Map();
 
         const STAGE_ORDER = ['GROUP', 'R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
         const STAGE_PREREQ = {
@@ -318,7 +319,8 @@
             // Also disable/enable prediction score inputs
             document.querySelectorAll('#prediction-form-games input[type="number"]').forEach(input => {
                 const locked = input.dataset.locked === 'true';
-                input.disabled = !enabled || locked;
+                const started = input.dataset.started === 'true';
+                input.disabled = !enabled || locked || started;
             });
         }
 
@@ -379,6 +381,7 @@
                 // Show My Predictions section and load predictions
                 myPredictionsSection.style.display = 'block';
                 loadMyPredictions(); // Call the new function to load predictions for this user
+                loadUserPredictionsForForm();
 
                 //console.log("User signed in:", user.email, "UID:", user.uid);
 
@@ -409,6 +412,8 @@
                 // Hide My Predictions section and clear its content
                 myPredictionsSection.style.display = 'none';
                 myPredictionsList.innerHTML = '<p class="text-center">Todavía no hay predicciones.</p>'; // Clear display
+                userPredictionsByGame = new Map();
+                loadGames();
 
                 if (adminNavLink) {
                     adminNavLink.style.display = 'none';
@@ -523,6 +528,10 @@
                     const stageId = getStageIdFromGame(game);
                     const isLocked = stageId && stageUnlocks.hasOwnProperty(stageId) ? !stageUnlocks[stageId] : false;
                     const lockMessage = isLocked ? getLockMessage(stageId) : '';
+                    const statusValue = (game.Status || game.status || '').toLowerCase();
+                    const kickOffValue = game.KickOffTime?.toDate ? game.KickOffTime.toDate() : game.KickOffTime;
+                    const kickOffMillis = kickOffValue ? new Date(kickOffValue).getTime() : NaN;
+                    const hasStarted = statusValue !== 'upcoming' || (!Number.isNaN(kickOffMillis) && kickOffMillis <= Date.now());
 
                     const homeTeamLogo = teamLogoMap.get(game.HomeTeam) || 'path/to/default_logo.png';
                     const awayTeamLogo = teamLogoMap.get(game.AwayTeam) || 'path/to/default_logo.png';
@@ -535,8 +544,12 @@
                             predictionGameCard.style.opacity = '0.7';
                         }
 
-                        const disabledAttr = isLocked ? 'disabled data-locked="true"' : '';
-                        const lockNotice = isLocked ? `<p class="lock-notice">${lockMessage}</p>` : '';
+                        const disabledAttr = `${isLocked ? 'disabled data-locked="true"' : ''} ${hasStarted ? 'disabled data-started="true"' : ''}`;
+                        const lockNotice = isLocked
+                            ? `<p class="lock-notice">${lockMessage}</p>`
+                            : hasStarted
+                                ? `<p class="lock-notice">Predicciones cerradas: el partido ya empezó.</p>`
+                                : '';
 
                         predictionGameCard.innerHTML = `
                             <div class="teams-row">
@@ -574,6 +587,7 @@
                 } else {
                     const hasUnlockedGames = gamesForPrediction.some(game => !game.isLocked);
                     setPredictionFormEnabled(!!currentUserId && hasUnlockedGames);
+                    applyUserPredictionsToForm();
                 }
 
             } catch (error) {
@@ -581,6 +595,43 @@
                 predictionFormGamesDiv.innerHTML = '<p>Error al cargar partidos para predicción.</p>';
                 setPredictionFormEnabled(false);
             }
+        }
+
+        async function loadUserPredictionsForForm() {
+            if (!currentUserId) return;
+
+            try {
+                const predictionsRef = collection(db, 'predictions');
+                const q = query(
+                    predictionsRef,
+                    where('userId', '==', currentUserId),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                );
+                const snapshot = await getDocs(q);
+                userPredictionsByGame = new Map();
+                snapshot.forEach(doc => {
+                    const prediction = doc.data();
+                    if (prediction.gameId) {
+                        userPredictionsByGame.set(prediction.gameId, prediction);
+                    }
+                });
+                applyUserPredictionsToForm();
+            } catch (error) {
+                console.error("Error loading user predictions for form: ", error);
+            }
+        }
+
+        function applyUserPredictionsToForm() {
+            if (!userPredictionsByGame || userPredictionsByGame.size === 0) return;
+            document.querySelectorAll('#prediction-form-games input[type="number"]').forEach(input => {
+                const gameId = input.dataset.gameId;
+                const prediction = userPredictionsByGame.get(gameId);
+                if (!prediction) return;
+                const value = input.dataset.team === 'home' ? prediction.predictedHomeScore : prediction.predictedAwayScore;
+                if (value !== null && value !== undefined) {
+                    input.value = value;
+                }
+            });
         }
 
 
