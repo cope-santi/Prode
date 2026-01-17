@@ -1,11 +1,15 @@
 const NAV_ITEMS = [
-    { key: 'play', label: 'Partidos / Predicciones', href: 'index.html' },
-    { key: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html' },
-    { key: 'phases', label: 'Fases', href: 'game_weeks.html' },
-    { key: 'calendar', label: 'Calendario', href: 'fixtures.html' }
+    { key: 'matches', label: 'Partidos', href: 'index.html' },
+    { key: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html' }
 ];
 
-export function mountNavbar(activeKey) {
+const MATCHES_ITEMS = [
+    { key: 'predict', label: 'Pronosticar', href: 'index.html' },
+    { key: 'date', label: 'Por fecha', href: 'fixtures.html' },
+    { key: 'stage', label: 'Por fase', href: 'game_weeks.html' }
+];
+
+export function mountNavbar(activeKey, subKey) {
     const container = document.getElementById('app-navbar');
     if (!container) return;
 
@@ -26,4 +30,22 @@ export function mountNavbar(activeKey) {
             </div>
         </nav>
     `;
+
+    const matchesContainer = document.getElementById('matches-subnav');
+    if (matchesContainer) {
+        const matchesLinksHtml = MATCHES_ITEMS.map(item => {
+            const isActive = item.key === subKey ? 'active' : '';
+            return `<a class="matches-segmented__item ${isActive}" href="${item.href}">${item.label}</a>`;
+        }).join('');
+
+        matchesContainer.innerHTML = `
+            <div class="matches-subnav">
+                <div class="matches-subnav__inner">
+                    <div class="matches-segmented">
+                        ${matchesLinksHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 }

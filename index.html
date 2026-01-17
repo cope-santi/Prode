@@ -33,6 +33,7 @@
 
 <body>
     <header id="app-navbar"></header>
+    <div id="matches-subnav"></div>
 
 
     <header class="hero">
@@ -203,7 +204,7 @@
         import { firebaseConfig } from "./js/firebase-config.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
         
-        mountNavbar("play");
+        mountNavbar("matches", "predict");
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
