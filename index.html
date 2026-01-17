@@ -23,6 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
 
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
 
     <script src="https://kit.fontawesome.com/e32607c50a.js" crossorigin="anonymous"></script>
@@ -31,34 +32,7 @@
 
 
 <body>
-    <nav class="navbar sticky-top navbar-expand-sm navbar-dark bg-dark ">
-        <div class="container d-flex flex-column flex-md-row justify-content-between">
-            <a class="navbar-brand" href="index.html">WC26</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarsExample03">
-                <ul class="navbar-nav me-auto mb-2 mb-sm-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="leaderboard.html">Tabla</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="game_weeks.html">Fases</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="fixtures.html">Calendario</a>
-                    </li>
-                    <li class="nav-item" id="adminNavLink" style="display: none;">
-                        <a class="nav-link" href="admin.html">Admin</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#auth-ui">Iniciar sesión</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <header id="app-navbar"></header>
 
 
     <header class="hero">
@@ -219,6 +193,7 @@
 
 
     <script type="module">
+        import { mountNavbar } from "./js/layout.js";
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, getDoc, setDoc, deleteDoc, query, orderBy, limit, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -228,6 +203,8 @@
         import { firebaseConfig } from "./js/firebase-config.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
         
+        mountNavbar("play");
+
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app); // Get a reference to the Firestore database
