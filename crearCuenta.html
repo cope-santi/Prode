@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="es" dir="ltr">
 
 <!-- Head -->
 
@@ -10,15 +10,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Primary Meta Tags -->
-  <title>Eliminatorias Anónimas</title>
-  <meta name="title" content="Eliminatorias Anónimas" />
-  <meta name="description" content="Fútbol, fútbol & fútbol!" />
+  <title>Cuenta - Prode Mundial 2026</title>
+  <meta name="title" content="Cuenta - Prode Mundial 2026" />
+  <meta name="description" content="Accedé a tu cuenta del Prode Mundial 2026 para cargar tus predicciones." />
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="" />
-  <meta property="og:title" content="Eliminatorias Anónimas" />
-  <meta property="og:description" content="Fútbol, fútbol & fútbol!" />
+  <meta property="og:title" content="Cuenta - Prode Mundial 2026" />
+  <meta property="og:description" content="Accedé a tu cuenta del Prode Mundial 2026 para cargar tus predicciones." />
   <!-- <meta property="og:image" itemprop="image"  content="https://live.staticflickr.com/65535/51133249283_6b50006683_t.jpg" /> -->
   <!-- <meta property="og:updated_time" content="1440432930"> -->
 
@@ -34,6 +34,7 @@
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/layout.css">
   <link rel="icon" href="./css/icon/favicon-ball.ico" />
 
   <!-- Font Awesome -->
@@ -45,50 +46,38 @@
 
 <body>
 
-  <!-- Navigation Bar -->
-  <nav class="navbar sticky-top navbar-expand-sm navbar-dark bg-dark ">
-    <div class="container d-flex flex-column flex-md-row justify-content-between">
-      <a class="navbar-brand" href="#">EA</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample03" aria-controls="navbarsExample03" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+  <header id="app-navbar"></header>
 
-      <div class="collapse navbar-collapse" id="navbarsExample03">
-        <ul class="navbar-nav me-auto mb-2 mb-sm-0">
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="#profile">Crear una cuenta</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#skills">Iniciar sesión</a>
-          </li>
-        </ul>
+  <section class="py-5">
+    <div class="container">
+      <div class="app-card prediction-section">
+        <h1 class="mb-3">Cuenta Prode Mundial 2026</h1>
+        <p class="section-lede">Ingresá o creá tu cuenta para empezar a pronosticar.</p>
+
+        <div class="row mt-4">
+          <div class="col-md-6 mb-3">
+            <div class="app-card h-100 text-start">
+              <h3>Iniciar sesión</h3>
+              <p>Si ya tenés cuenta, ingresá desde la pantalla principal.</p>
+              <a class="btn btn-primary-custom" href="index.html#auth-ui">Ir a iniciar sesión</a>
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <div class="app-card h-100 text-start">
+              <h3>Crear cuenta</h3>
+              <p>Registrate con tu correo y empezá a sumar puntos.</p>
+              <a class="btn btn-secondary-custom" href="index.html#auth-ui">Ir a crear cuenta</a>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </nav>
-
-  <!-- Sign In -->
-  <section class="section-sigin">
-    <div class="form-signin">
-      <form>
-        <img class="mb-4" src="css/images/EA-logo.png" alt="" width="150" height="150">
-        <h1 class="h3 mb-3 fw-normal">Crea tu cuenta</h1>
-
-        <div class="form-floating">
-          <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com">
-          <label for="floatingInput">Email </label>
-        </div>
-
-        <div class="form-floating">
-          <input type="password" class="form-control" id="floatingPassword" placeholder="Password">
-          <label for="floatingPassword">Contraseña</label>
-        </div>
-
-        <button class="w-100 btn btn-lg" type="submit">Crear cuenta</button>
-        <p class="mt-5 mb-3 text-muted">&copy; 2016-2021</p>
-      </form>
+      <p class="footer-link mt-4">© <span id="footer-year"></span> Prode Mundial 2026.</p>
     </div>
   </section>
 
-
-
+  <script type="module">
+    import { mountNavbar } from "./js/layout.js";
+    mountNavbar({ activeKey: "account", accountLabel: "Cuenta", accountHref: "crearCuenta.html" });
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  </script>
 </body>
