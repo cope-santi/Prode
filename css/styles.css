@@ -958,6 +958,11 @@ section.hero-image-section { /* Added a class for clarity, apply to the relevant
     background-color: rgba(239, 68, 68, 0.12);
 }
 
+.game-card .status.live {
+    color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.12);
+}
+
 
 /* Styling for the container of the prediction inputs */
 .prediction-game-card .prediction-inputs {
@@ -1060,6 +1065,11 @@ button#submitPredictions {
     margin-right: auto;
 }
 
+.status-message {
+    font-weight: 700;
+    margin-top: 15px;
+}
+
 .loading-message {
     background-color: rgba(1, 157, 154, 0.1); /* Light background using primary color */
     color: var(--primary-color);
@@ -1073,6 +1083,17 @@ button#submitPredictions {
 .info-message {
     background-color: rgba(60, 179, 113, 0.1); /* A gentle green for success/info */
     color: darkgreen;
+}
+
+.success-message {
+    background-color: rgba(23, 201, 100, 0.18);
+    color: #0b1220;
+}
+
+.lock-notice {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #b45309;
 }
 
 /* Ensure hr has consistent styling */
