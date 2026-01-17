@@ -80,7 +80,7 @@ export function createPlayerHistoryModal() {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="player-history-title">Player History</h3>
+                <h3 id="player-history-title">Historial del jugador</h3>
                 <span class="close-modal" onclick="document.getElementById('player-history-modal').style.display = 'none';">&times;</span>
             </div>
             <div class="modal-body">
@@ -237,20 +237,20 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             meta.style.cssText = 'font-size: 0.85rem; color: #9e9e9e; margin-top: 4px;';
 
             const phaseSpan = document.createElement('span');
-            phaseSpan.textContent = `Phase: ${phaseLabel}`;
+            phaseSpan.textContent = `Fase: ${phaseLabel}`;
 
             const predictedSpan = document.createElement('span');
             predictedSpan.style.marginLeft = '8px';
             const predictedHome = pred.predictedHomeScore ?? '-';
             const predictedAway = pred.predictedAwayScore ?? '-';
-            predictedSpan.textContent = `Prediccion: ${predictedHome} - ${predictedAway}`;
+            predictedSpan.textContent = `Predicción: ${predictedHome} - ${predictedAway}`;
 
             meta.appendChild(phaseSpan);
             meta.appendChild(predictedSpan);
 
             if (game.Status === 'finished' && game.HomeScore !== null) {
                 const actualSpan = document.createElement('span');
-                actualSpan.textContent = ` | Actual: ${game.HomeScore} - ${game.AwayScore}`;
+                actualSpan.textContent = ` | Resultado: ${game.HomeScore} - ${game.AwayScore}`;
                 meta.appendChild(actualSpan);
             }
 
@@ -278,7 +278,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
         contentEl.innerHTML = '';
         const errorMessage = document.createElement('p');
         errorMessage.style.color = '#ff6b6b';
-        errorMessage.textContent = 'Error loading player history. Please try again.';
+        errorMessage.textContent = 'Error al cargar el historial. Intenta nuevamente.';
         contentEl.appendChild(errorMessage);
     }
 }
@@ -299,10 +299,10 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
 
     const headers = [
         { label: '#', className: '' },
-        { label: 'Player', className: '' },
-        { label: 'Total Points', className: '' },
-        { label: 'Phases Won', className: 'text-center' },
-        { label: 'Perfect Scores (10s)', className: 'text-center' }
+        { label: 'Jugador', className: '' },
+        { label: 'Puntos totales', className: '' },
+        { label: 'Fases ganadas', className: 'text-center' },
+        { label: 'Perfectos (10)', className: 'text-center' }
     ];
 
     headers.forEach(header => {
@@ -322,7 +322,7 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.dataset.userId = userId;
-        row.title = 'Click to view prediction history';
+        row.title = 'Ver historial de predicciones';
 
         const rankCell = document.createElement('th');
         rankCell.scope = 'row';
@@ -330,7 +330,7 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
 
         const playerCell = document.createElement('td');
         const playerStrong = document.createElement('strong');
-        playerStrong.textContent = userNames[userId] || 'Anonymous';
+        playerStrong.textContent = userNames[userId] || 'Anónimo';
         playerCell.appendChild(playerStrong);
 
         const totalCell = document.createElement('td');

@@ -121,8 +121,8 @@ export async function handleAdminGameAdd() {
     const group = adminGroupSelect.value || null;
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
-    const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
-    const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
+    const homeScore = parseOptionalNumber(adminHomeScoreInput.value);
+    const awayScore = parseOptionalNumber(adminAwayScoreInput.value);
     let status = adminStatusSelect.value;
     const hasScores = homeScore !== null && awayScore !== null;
     if (status === 'upcoming' && hasScores) {
@@ -311,8 +311,8 @@ export async function handleAdminGameUpdate() {
     const group = adminGroupSelect.value || null;
     const matchday = adminMatchdaySelect.value ? parseInt(adminMatchdaySelect.value, 10) : null;
     const kickOffTimeStr = adminKickOffTimeInput.value;
-    const homeScore = adminHomeScoreInput.value ? parseInt(adminHomeScoreInput.value, 10) : null;
-    const awayScore = adminAwayScoreInput.value ? parseInt(adminAwayScoreInput.value, 10) : null;
+    const homeScore = parseOptionalNumber(adminHomeScoreInput.value);
+    const awayScore = parseOptionalNumber(adminAwayScoreInput.value);
     let status = adminStatusSelect.value;
     const hasScores = homeScore !== null && awayScore !== null;
     if (status === 'upcoming' && hasScores) {
@@ -448,6 +448,14 @@ function clearAdminForm() {
 function isValidScore(score) {
     if (score === null) return true;
     return Number.isFinite(score) && score >= 0;
+}
+
+function parseOptionalNumber(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function updateGroupMatchdayInputs() {
