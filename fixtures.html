@@ -72,6 +72,12 @@
         let allGames = [];
         let selectedFilter = null;
         let allTeams = {};
+        const statusLabelMap = {
+            finished: 'Finalizado',
+            live: 'En vivo',
+            in_play: 'En vivo',
+            upcoming: 'Próximo'
+        };
 
         const gameListDiv = document.getElementById('game-list');
         const fixturesPhaseSelector = document.getElementById('fixtures-phase-selector');
@@ -152,8 +158,8 @@
                         'ALL',
                         'fixturesPhaseSelector',
                         (filterKey) => {
-                            if (filterKey === 'ALL') return 'All (closest first)';
-                            if (filterKey.startsWith('GROUP-')) return `Group ${filterKey.split('-')[1]}`;
+                            if (filterKey === 'ALL') return 'Todos (más próximos primero)';
+                            if (filterKey.startsWith('GROUP-')) return `Grupo ${filterKey.split('-')[1]}`;
                             return filterKey;
                         }
                     );
@@ -166,7 +172,7 @@
 
             } catch (error) {
                 console.error("Error loading games: ", error);
-                gameListDiv.innerHTML = '<p>Error loading games. Please try again.</p>';
+                gameListDiv.innerHTML = '<p>Error al cargar partidos. Intenta nuevamente.</p>';
             }
         }
 
@@ -197,9 +203,11 @@
                 const homeLogoUrl = homeTeamData.logoUrl || '';
                 const awayLogoUrl = awayTeamData.logoUrl || '';
 
-                let statusClass = game.Status ? game.Status.toLowerCase() : '';
+                const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+                const statusClass = statusValue === 'in_play' ? 'live' : statusValue;
+                const statusLabel = statusLabelMap[statusValue] || statusValue;
                 let scoreDisplay = '';
-                if (game.Status && game.Status.toLowerCase() === 'finished') {
+                if (statusValue === 'finished') {
                     const homeScore = game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?';
                     const awayScore = game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?';
                     scoreDisplay = `<p><strong>Resultado:</strong> ${homeScore} - ${awayScore}</p>`;
@@ -212,6 +220,11 @@
 
                 const gameCard = document.createElement('div');
                 gameCard.classList.add('app-card', 'game-card');
+
+                const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
+                const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
+                    ? kickoffDate.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+                    : 'Sin horario';
 
                 gameCard.innerHTML = `
                     <div class="teams-row">
@@ -226,8 +239,8 @@
                         </div>
                     </div>
                     <p><strong>Fase:</strong> ${phaseLabel}</p>
-                    <p><strong>Inicio:</strong> ${new Date(game.KickOffTime).toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }) || 'N/A'}</p>
-                    <p><strong>Estado:</strong> <span class="status ${statusClass}">${game.Status || 'N/A'}</span></p>
+                    <p><strong>Inicio:</strong> ${kickoffLabel}</p>
+                    <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
                     ${scoreDisplay}
                 `;
                 gameListDiv.appendChild(gameCard);
