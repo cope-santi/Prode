@@ -56,16 +56,19 @@
         import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { calculatePoints, calculatePlayerStats } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
         import { renderLeaderboardTable, createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
-        mountNavbar("leaderboard");
+        mountNavbar({ activeKey: "leaderboard" });
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3';
 
         // UI Elements
         const allGamesResultsContainer = document.getElementById('all-games-results-container');
@@ -96,6 +99,22 @@
         });
 
         loadSyncStatus();
+
+        function updateNavbarForUser(user) {
+            const isAdmin = user && user.uid === ADMIN_UID;
+            const accountLabel = user ? 'Perfil' : 'Ingresar';
+            const accountHref = user ? 'index.html#auth-ui' : 'crearCuenta.html';
+            mountNavbar({
+                activeKey: 'leaderboard',
+                accountLabel,
+                accountHref,
+                showAdmin: isAdmin
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            updateNavbarForUser(user);
+        });
 
         // --- Load All Results Function ---
         async function loadAllResults() {

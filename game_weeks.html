@@ -12,7 +12,6 @@
 <body class="bg-dark text-white">
 
     <header id="app-navbar"></header>
-    <div id="matches-subnav"></div>
 
     <div class="container-fluid py-4">
         <section class="section-hero">
@@ -82,7 +81,7 @@
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
 
-        mountNavbar("matches", "stage");
+        mountNavbar({ activeKey: "matches" });
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);

@@ -1,15 +1,15 @@
 const NAV_ITEMS = [
-    { key: 'matches', label: 'Partidos', href: 'index.html' },
+    { key: 'matches', label: 'Partidos', href: 'fixtures.html' },
     { key: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html' }
 ];
 
-const MATCHES_ITEMS = [
-    { key: 'predict', label: 'Pronosticar', href: 'index.html' },
-    { key: 'date', label: 'Por fecha', href: 'fixtures.html' },
-    { key: 'stage', label: 'Por fase', href: 'game_weeks.html' }
-];
-
-export function mountNavbar(activeKey, subKey) {
+export function mountNavbar(options = {}) {
+    const {
+        activeKey = '',
+        accountLabel = 'Ingresar',
+        accountHref = 'crearCuenta.html',
+        showAdmin = false
+    } = options;
     const container = document.getElementById('app-navbar');
     if (!container) return;
 
@@ -17,6 +17,10 @@ export function mountNavbar(activeKey, subKey) {
         const isActive = item.key === activeKey ? 'active' : '';
         return `<a class="topbar__link ${isActive}" href="${item.href}">${item.label}</a>`;
     }).join('');
+    const adminLinkHtml = showAdmin
+        ? `<a class="topbar__link ${activeKey === 'admin' ? 'active' : ''}" href="admin.html">Admin</a>`
+        : '';
+    const accountClass = activeKey === 'account' ? 'topbar__account active' : 'topbar__account';
 
     container.innerHTML = `
         <nav class="topbar">
@@ -24,28 +28,11 @@ export function mountNavbar(activeKey, subKey) {
                 <a class="topbar__brand" href="index.html">Prode</a>
                 <div class="topbar__links">
                     ${linksHtml}
+                    ${adminLinkHtml}
                 </div>
                 <div class="topbar__spacer"></div>
-                <a class="topbar__account" href="crearCuenta.html">Ingresar</a>
+                <a class="${accountClass}" href="${accountHref}">${accountLabel}</a>
             </div>
         </nav>
     `;
-
-    const matchesContainer = document.getElementById('matches-subnav');
-    if (matchesContainer) {
-        const matchesLinksHtml = MATCHES_ITEMS.map(item => {
-            const isActive = item.key === subKey ? 'active' : '';
-            return `<a class="matches-segmented__item ${isActive}" href="${item.href}">${item.label}</a>`;
-        }).join('');
-
-        matchesContainer.innerHTML = `
-            <div class="matches-subnav">
-                <div class="matches-subnav__inner">
-                    <div class="matches-segmented">
-                        ${matchesLinksHtml}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
 }

@@ -187,7 +187,7 @@
     <!-- Footer -->
     <div class="footer-container">
         <a href="https://chat.whatsapp.com/2cUguIQ8AWhCTkfYLaixfi" target="_blank"><i class="footer-icon fab fa-whatsapp fa-2x"></i></a>
-        <p class='footer-link'>© 2025 José Daniel Cuéllar Lobo.</p>
+        <p class='footer-link'>© <span id="admin-footer-year"></span> José Daniel Cuéllar Lobo.</p>
     </div>
 
     <script type="module">
@@ -203,7 +203,8 @@
         import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js";
         import { TOURNAMENT_CONFIG } from "./js/tournament-config.js";
 
-        mountNavbar("admin");
+        mountNavbar({ activeKey: "admin" });
+        document.getElementById('admin-footer-year').textContent = new Date().getFullYear();
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -348,7 +349,20 @@
         /**
          * Auth State Change Listener
          */
+        function updateNavbarForUser(user) {
+            const isAdmin = user && user.uid === ADMIN_UID;
+            const accountLabel = user ? 'Perfil' : 'Ingresar';
+            const accountHref = user ? '#auth-ui' : 'crearCuenta.html';
+            mountNavbar({
+                activeKey: 'admin',
+                accountLabel,
+                accountHref,
+                showAdmin: isAdmin
+            });
+        }
+
         onAuthStateChanged(auth, async (user) => {
+            updateNavbarForUser(user);
             if (user) {
                 // User is signed in
                 currentUserId = user.uid;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendario - Mundial 2026</title>
+    <title>Partidos - Mundial 2026</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="stylesheet" href="css/layout.css">
@@ -12,28 +12,73 @@
 <body class="bg-dark text-white">
 
     <header id="app-navbar"></header>
-    <div id="matches-subnav"></div>
 
     <div class="container py-4">
         <section class="section-hero">
             <div class="section-hero-content">
                 <span class="hero-badge">MUNDIAL 2026</span>
-                <h1 class="hero-title">Calendario completo</h1>
-                <p class="hero-subtitle">Partidos ordenados por fecha y grupos para que no te pierdas nada.</p>
+                <h1 class="hero-title">Partidos del Mundial 2026</h1>
+                <p class="hero-subtitle">Filtrá por etapa, grupo o equipo para encontrar cada partido.</p>
             </div>
         </section>
         <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
 
-        <!-- Filter Selector -->
-        <div id="fixtures-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-            <h5 class="mb-3">Filtrar por grupo:</h5>
-            <div id="fixtures-phase-buttons"></div>
+        <div class="filter-bar" id="fixtures-filter-bar">
+            <div class="filter-bar__row">
+                <div class="filter-field">
+                    <label for="stage-filter">Etapa</label>
+                    <select id="stage-filter">
+                        <option value="GROUP">Grupos</option>
+                        <option value="R32">Ronda de 32</option>
+                        <option value="R16">Octavos</option>
+                        <option value="QF">Cuartos</option>
+                        <option value="SF">Semis</option>
+                        <option value="3P">Tercer puesto</option>
+                        <option value="FINAL">Final</option>
+                    </select>
+                </div>
+                <div class="filter-field" id="group-filter-field" style="display: none;">
+                    <label for="group-filter">Grupo</label>
+                    <select id="group-filter">
+                        <option value="ALL">Todos</option>
+                        <option value="A">Grupo A</option>
+                        <option value="B">Grupo B</option>
+                        <option value="C">Grupo C</option>
+                        <option value="D">Grupo D</option>
+                        <option value="E">Grupo E</option>
+                        <option value="F">Grupo F</option>
+                        <option value="G">Grupo G</option>
+                        <option value="H">Grupo H</option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="team-search">Buscar equipo</label>
+                    <input type="text" id="team-search" placeholder="Argentina, México...">
+                </div>
+                <div class="filter-field">
+                    <label>Mostrar</label>
+                    <label class="filter-toggle">
+                        <input type="checkbox" id="upcoming-toggle" checked>
+                        <span>Próximos / Todos</span>
+                    </label>
+                </div>
+            </div>
+            <div class="filter-bar__row" id="view-toggle-row" style="display: none;">
+                <div class="filter-field">
+                    <label>Vista</label>
+                    <div class="view-toggle" role="group" aria-label="Vista de eliminatorias">
+                        <button type="button" class="view-toggle__button active" data-view="list">Lista</button>
+                        <button type="button" class="view-toggle__button" data-view="bracket">Llaves</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Games List -->
         <div id="game-list" class="game-list">
             <p class="loading-message">Cargando partidos...</p>
         </div>
+        <div id="knockout-view" style="display: none;"></div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -43,19 +88,32 @@
         import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { firebaseConfig } from "./js/firebase-config.js";
-        import { createPhaseSelector, updatePhaseSelectorState } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
-        mountNavbar("matches", "date");
+        mountNavbar({ activeKey: "matches" });
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3';
 
         // State
         let allGames = [];
-        let selectedFilter = null;
         let allTeams = {};
+        let viewMode = 'list';
+        const KNOCKOUT_STAGES = ['R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
+        const STAGE_LABELS = {
+            GROUP: 'Fase de grupos',
+            R32: 'Ronda de 32',
+            R16: 'Octavos de final',
+            QF: 'Cuartos de final',
+            SF: 'Semifinales',
+            '3P': 'Tercer puesto',
+            FINAL: 'Final'
+        };
         const statusLabelMap = {
             finished: 'Finalizado',
             live: 'En vivo',
@@ -64,9 +122,32 @@
         };
 
         const gameListDiv = document.getElementById('game-list');
-        const fixturesPhaseSelector = document.getElementById('fixtures-phase-selector');
+        const knockoutView = document.getElementById('knockout-view');
+        const stageSelect = document.getElementById('stage-filter');
+        const groupFilterField = document.getElementById('group-filter-field');
+        const groupSelect = document.getElementById('group-filter');
+        const teamSearchInput = document.getElementById('team-search');
+        const upcomingToggle = document.getElementById('upcoming-toggle');
+        const viewToggleRow = document.getElementById('view-toggle-row');
+        const viewToggleButtons = document.querySelectorAll('.view-toggle__button');
 
         loadSyncStatus();
+
+        function updateNavbarForUser(user) {
+            const isAdmin = user && user.uid === ADMIN_UID;
+            const accountLabel = user ? 'Perfil' : 'Ingresar';
+            const accountHref = user ? 'index.html#auth-ui' : 'crearCuenta.html';
+            mountNavbar({
+                activeKey: 'matches',
+                accountLabel,
+                accountHref,
+                showAdmin: isAdmin
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            updateNavbarForUser(user);
+        });
 
         // Load teams first
         async function loadTeams() {
@@ -110,48 +191,7 @@
                     return timeA - timeB;
                 });
 
-                // Build filter options (all, groups)
-                const groupSet = new Set();
-                allGames.forEach(game => {
-                    const rawGroup = game.Group || game.group;
-                    if (rawGroup) {
-                        groupSet.add(String(rawGroup).toUpperCase());
-                    }
-                });
-
-                const groupList = Array.from(groupSet).sort();
-                const filterOptions = [
-                    'ALL',
-                    ...groupList.map(group => `GROUP-${group}`)
-                ];
-
-                // Show selector if multiple options
-                if (filterOptions.length > 1) {
-                    fixturesPhaseSelector.style.display = 'block';
-                    // Default: show all games by date (closest first)
-                    selectedFilter = 'ALL';
-                    
-                    createPhaseSelector(
-                        filterOptions,
-                        (filterKey) => {
-                            selectedFilter = filterKey;
-                            updatePhaseSelectorState('fixtures-phase-buttons', filterKey);
-                            displayFilteredGames();
-                        },
-                        'fixtures-phase-buttons',
-                        'ALL',
-                        'fixturesPhaseSelector',
-                        (filterKey) => {
-                            if (filterKey === 'ALL') return 'Todos (más próximos primero)';
-                            if (filterKey.startsWith('GROUP-')) return `Grupo ${filterKey.split('-')[1]}`;
-                            return filterKey;
-                        }
-                    );
-                } else if (filterOptions.length === 1) {
-                    fixturesPhaseSelector.style.display = 'none';
-                    selectedFilter = filterOptions[0];
-                }
-
+                updateStageUI();
                 displayFilteredGames();
 
             } catch (error) {
@@ -160,32 +200,65 @@
             }
         }
 
-        // Display filtered games
-        function displayFilteredGames() {
-            const filteredGames = selectedFilter && selectedFilter !== 'ALL'
-                ? allGames.filter(game => {
-                    if (selectedFilter.startsWith('GROUP-')) {
-                        const group = selectedFilter.split('-')[1];
-                        const gameStage = String(game.Stage || game.stage || '').toUpperCase();
-                        const gameGroup = String(game.Group || game.group || '').toUpperCase();
-                        return gameStage === 'GROUP' && gameGroup === group;
-                    }
-                    return true;
-                })
-                : allGames;
-
-            if (filteredGames.length === 0) {
-                gameListDiv.innerHTML = '<p class="text-center">No hay partidos para este filtro.</p>';
-                return;
+        function updateStageUI() {
+            const stageValue = stageSelect.value;
+            const isGroup = stageValue === 'GROUP';
+            groupFilterField.style.display = isGroup ? 'block' : 'none';
+            if (!isGroup) {
+                groupSelect.value = 'ALL';
             }
+            viewToggleRow.style.display = isGroup ? 'none' : 'block';
+            if (isGroup) {
+                viewMode = 'list';
+                viewToggleButtons.forEach(button => {
+                    button.classList.toggle('active', button.dataset.view === 'list');
+                });
+            }
+        }
 
-            gameListDiv.innerHTML = '';
+        function getFilteredGames() {
+            const stageValue = stageSelect.value;
+            const groupValue = groupSelect.value;
+            const searchTerm = teamSearchInput.value.trim().toLowerCase();
+            const upcomingOnly = upcomingToggle.checked;
 
-            filteredGames.forEach(game => {
-                const homeTeamData = allTeams[game.HomeTeam] || {};
-                const awayTeamData = allTeams[game.AwayTeam] || {};
-                const homeLogoUrl = homeTeamData.logoUrl || '';
-                const awayLogoUrl = awayTeamData.logoUrl || '';
+            return allGames.filter(game => {
+                const stage = String(game.Stage || game.stage || '').toUpperCase();
+                if (stageValue && stage !== stageValue) {
+                    return false;
+                }
+                if (stageValue === 'GROUP' && groupValue !== 'ALL') {
+                    const group = String(game.Group || game.group || '').toUpperCase();
+                    if (group !== groupValue) {
+                        return false;
+                    }
+                }
+                if (searchTerm) {
+                    const home = String(game.HomeTeam || '').toLowerCase();
+                    const away = String(game.AwayTeam || '').toLowerCase();
+                    if (!home.includes(searchTerm) && !away.includes(searchTerm)) {
+                        return false;
+                    }
+                }
+                if (upcomingOnly) {
+                    const status = (game.Status || game.status || '').toLowerCase();
+                    if (status === 'finished') {
+                        return false;
+                    }
+                }
+                return true;
+            }).sort((a, b) => {
+                const timeA = a.KickOffTime ? new Date(a.KickOffTime).getTime() : 0;
+                const timeB = b.KickOffTime ? new Date(b.KickOffTime).getTime() : 0;
+                return timeA - timeB;
+            });
+        }
+
+        function createGameCard(game) {
+            const homeTeamData = allTeams[game.HomeTeam] || {};
+            const awayTeamData = allTeams[game.AwayTeam] || {};
+            const homeLogoUrl = homeTeamData.logoUrl || '';
+            const awayLogoUrl = awayTeamData.logoUrl || '';
 
                 const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
                 const statusClass = statusValue === 'in_play' ? 'live' : statusValue;
@@ -202,39 +275,113 @@
                     phaseLabel = `Grupo ${String(game.Group || game.group).toUpperCase()}`;
                 }
 
-                const gameCard = document.createElement('div');
-                gameCard.classList.add('app-card', 'game-card');
+            const gameCard = document.createElement('div');
+            gameCard.classList.add('app-card', 'game-card');
 
-                const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
-                const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
-                    ? kickoffDate.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
-                    : 'Sin horario';
+            const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
+            const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
+                ? kickoffDate.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+                : 'Sin horario';
 
-                gameCard.innerHTML = `
-                    <div class="teams-row">
-                        <div class="team">
-                            ${homeLogoUrl ? `<img src="${homeLogoUrl}" alt="${game.HomeTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                            <p class="team-name">${game.HomeTeam}</p>
-                        </div>
-                        <div class="vs-separator">vs</div>
-                        <div class="team">
-                            ${awayLogoUrl ? `<img src="${awayLogoUrl}" alt="${game.AwayTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                            <p class="team-name">${game.AwayTeam}</p>
-                        </div>
+            gameCard.innerHTML = `
+                <div class="teams-row">
+                    <div class="team">
+                        ${homeLogoUrl ? `<img src="${homeLogoUrl}" alt="${game.HomeTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                        <p class="team-name">${game.HomeTeam}</p>
                     </div>
-                    <p><strong>Fase:</strong> ${phaseLabel}</p>
-                    <p><strong>Inicio:</strong> ${kickoffLabel}</p>
-                    <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
-                    ${scoreDisplay}
-                `;
-                gameListDiv.appendChild(gameCard);
+                    <div class="vs-separator">vs</div>
+                    <div class="team">
+                        ${awayLogoUrl ? `<img src="${awayLogoUrl}" alt="${game.AwayTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                        <p class="team-name">${game.AwayTeam}</p>
+                    </div>
+                </div>
+                <p><strong>Fase:</strong> ${phaseLabel}</p>
+                <p><strong>Inicio:</strong> ${kickoffLabel}</p>
+                <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
+                ${scoreDisplay}
+            `;
+            return gameCard;
+        }
+
+        function displayFilteredGames() {
+            const filteredGames = getFilteredGames();
+
+            if (filteredGames.length === 0) {
+                gameListDiv.innerHTML = '<p class="text-center">No hay partidos para este filtro.</p>';
+                gameListDiv.style.display = 'block';
+                knockoutView.style.display = 'none';
+                knockoutView.innerHTML = '';
+                return;
+            }
+
+            if (viewMode === 'bracket') {
+                renderKnockoutView(filteredGames);
+                return;
+            }
+
+            gameListDiv.style.display = 'grid';
+            knockoutView.style.display = 'none';
+            knockoutView.innerHTML = '';
+            gameListDiv.innerHTML = '';
+
+            filteredGames.forEach(game => {
+                gameListDiv.appendChild(createGameCard(game));
             });
+        }
+
+        function renderKnockoutView(filteredGames) {
+            knockoutView.innerHTML = '';
+            gameListDiv.style.display = 'none';
+            knockoutView.style.display = 'block';
+
+            KNOCKOUT_STAGES.forEach(stageKey => {
+                const stageGames = filteredGames.filter(game => {
+                    const stage = String(game.Stage || game.stage || '').toUpperCase();
+                    return stage === stageKey;
+                });
+                if (stageGames.length === 0) return;
+
+                const section = document.createElement('div');
+                section.classList.add('knockout-section');
+                const title = document.createElement('h3');
+                title.classList.add('knockout-section__title');
+                title.textContent = STAGE_LABELS[stageKey] || stageKey;
+                section.appendChild(title);
+
+                const list = document.createElement('div');
+                list.classList.add('game-list');
+                stageGames.forEach(game => {
+                    list.appendChild(createGameCard(game));
+                });
+                section.appendChild(list);
+                knockoutView.appendChild(section);
+            });
+        }
+
+        function handleViewToggle(targetView) {
+            viewMode = targetView;
+            viewToggleButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.view === targetView);
+            });
+            displayFilteredGames();
+        }
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadTeams();
             await loadGames();
+
+            stageSelect.addEventListener('change', () => {
+                updateStageUI();
+                displayFilteredGames();
+            });
+            groupSelect.addEventListener('change', displayFilteredGames);
+            teamSearchInput.addEventListener('input', displayFilteredGames);
+            upcomingToggle.addEventListener('change', displayFilteredGames);
+            viewToggleButtons.forEach(button => {
+                button.addEventListener('click', () => handleViewToggle(button.dataset.view));
+            });
         });
 
         async function loadSyncStatus() {
