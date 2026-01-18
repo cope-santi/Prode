@@ -25,44 +25,44 @@
 
         <div class="filter-bar" id="fixtures-filter-bar">
             <div class="filter-bar__row">
-                <div class="filter-stack">
-                    <div class="filter-field">
-                        <label for="stage-filter">Etapa</label>
-                        <select id="stage-filter">
-                            <option value="GROUP">Grupos</option>
-                            <option value="R32">Ronda de 32</option>
-                            <option value="R16">Octavos</option>
-                            <option value="QF">Cuartos</option>
-                            <option value="SF">Semis</option>
-                            <option value="3P">Tercer puesto</option>
-                            <option value="FINAL">Final</option>
-                        </select>
-                    </div>
-                    <div class="filter-field" id="group-filter-field" style="display: none;">
-                        <label>Grupo</label>
-                        <div id="group-toggle" class="group-toggle">
-                            <button type="button" class="view-toggle__button group-toggle__button active" data-group="ALL">Todos</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="A">A</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="B">B</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="C">C</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="D">D</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="E">E</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="F">F</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="G">G</button>
-                            <button type="button" class="view-toggle__button group-toggle__button" data-group="H">H</button>
-                        </div>
-                    </div>
+                <div class="filter-field">
+                    <label for="stage-filter">Etapa</label>
+                    <select id="stage-filter">
+                        <option value="GROUP">Grupos</option>
+                        <option value="R32">Ronda de 32</option>
+                        <option value="R16">Octavos</option>
+                        <option value="QF">Cuartos</option>
+                        <option value="SF">Semis</option>
+                        <option value="3P">Tercer puesto</option>
+                        <option value="FINAL">Final</option>
+                    </select>
                 </div>
                 <div class="filter-field">
                     <label for="team-search">Buscar equipo</label>
-                    <input type="text" id="team-search" placeholder="Argentina, México...">
+                    <input type="text" id="team-search" placeholder="Argentina, MAcxico...">
                 </div>
                 <div class="filter-field">
                     <label>Mostrar</label>
                     <label class="filter-toggle">
                         <input type="checkbox" id="upcoming-toggle" checked>
-                        <span>Próximos / Todos</span>
+                        <span>PrA3ximos / Todos</span>
                     </label>
+                </div>
+            </div>
+            <div class="filter-bar__row" id="group-filter-field" style="display: none;">
+                <div class="filter-field">
+                    <label>Grupo</label>
+                    <div id="group-toggle" class="group-toggle">
+                        <button type="button" class="view-toggle__button group-toggle__button active" data-group="ALL">Todos</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="A">A</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="B">B</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="C">C</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="D">D</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="E">E</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="F">F</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="G">G</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="H">H</button>
+                    </div>
                 </div>
             </div>
             <div class="filter-bar__row" id="view-toggle-row" style="display: none;">
@@ -213,7 +213,7 @@
             }
             const stageValue = stageSelect.value;
             const isGroup = stageValue === 'GROUP';
-            groupFilterField.style.display = isGroup ? 'block' : 'none';
+            groupFilterField.style.display = isGroup ? 'grid' : 'none';
             if (!isGroup) {
                 selectedGroup = 'ALL';
                 updateGroupButtons();
