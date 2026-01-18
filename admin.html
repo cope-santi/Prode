@@ -351,8 +351,12 @@
          */
         function updateNavbarForUser(user) {
             const isAdmin = user && user.uid === ADMIN_UID;
+            const accountLabel = user ? 'Perfil' : 'Ingresar';
+            const accountHref = user ? '#auth-ui' : 'crearCuenta.html';
             mountNavbar({
                 activeKey: 'admin',
+                accountLabel,
+                accountHref,
                 showAdmin: isAdmin
             });
         }
