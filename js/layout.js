@@ -6,8 +6,6 @@ const NAV_ITEMS = [
 export function mountNavbar(options = {}) {
     const {
         activeKey = '',
-        accountLabel = 'Ingresar',
-        accountHref = 'crearCuenta.html',
         showAdmin = false
     } = options;
     const container = document.getElementById('app-navbar');
@@ -20,8 +18,6 @@ export function mountNavbar(options = {}) {
     const adminLinkHtml = showAdmin
         ? `<a class="topbar__link ${activeKey === 'admin' ? 'active' : ''}" href="admin.html">Admin</a>`
         : '';
-    const accountClass = activeKey === 'account' ? 'topbar__account active' : 'topbar__account';
-
     container.innerHTML = `
         <nav class="topbar">
             <div class="topbar__inner">
@@ -31,7 +27,6 @@ export function mountNavbar(options = {}) {
                     ${adminLinkHtml}
                 </div>
                 <div class="topbar__spacer"></div>
-                <a class="${accountClass}" href="${accountHref}">${accountLabel}</a>
             </div>
         </nav>
     `;

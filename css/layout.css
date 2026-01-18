@@ -88,31 +88,6 @@ body {
     flex: 1;
 }
 
-.topbar__account {
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    background: transparent;
-}
-
-.topbar__account:hover,
-.topbar__account:focus {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.12);
-}
-
-.topbar__account.active {
-    background: #17c964;
-    border-color: #17c964;
-    color: #0b1220;
-}
-
 .filter-bar {
     background: rgba(11, 18, 32, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.08);

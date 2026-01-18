@@ -346,12 +346,8 @@
         // --- Authentication State Listener ---
         function updateNavbarForUser(user) {
             const isAdmin = user && user.uid === ADMIN_UID;
-            const accountLabel = user ? 'Perfil' : 'Ingresar';
-            const accountHref = user ? '#auth-ui' : 'crearCuenta.html';
             mountNavbar({
                 activeKey: 'home',
-                accountLabel,
-                accountHref,
                 showAdmin: isAdmin
             });
         }
