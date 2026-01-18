@@ -135,6 +135,14 @@ node scripts/sync/tests/thesportsdb-mapper.test.js
 
 > La aplicación es exclusivamente un prode del FIFA World Cup 2026. No hay lógica multi-torneo ni dropdowns de liga: todo se fija en ese campeonato.
 
+## Deploy (Firebase Hosting)
+
+1. `firebase login`
+2. `firebase use --add` (o `firebase init hosting`)
+3. `firebase deploy --only hosting`
+
+Nota: agrega el dominio `PROJECT_ID.web.app` y/o tu dominio custom en **Firebase Auth > Authorized domains** para que el login funcione.
+
 ## Resolver conflictos de merge (guía rápida)
 
 1. Sincronizá tu rama: `git fetch origin && git pull`.
