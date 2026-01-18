@@ -178,18 +178,18 @@
                                 </select>
                             </div>
                             <div class="filter-field" id="my-group-filter-field" style="display: none;">
-                                <label for="my-group-filter">Grupo</label>
-                                <select id="my-group-filter">
-                                    <option value="ALL">Todos</option>
-                                    <option value="A">Grupo A</option>
-                                    <option value="B">Grupo B</option>
-                                    <option value="C">Grupo C</option>
-                                    <option value="D">Grupo D</option>
-                                    <option value="E">Grupo E</option>
-                                    <option value="F">Grupo F</option>
-                                    <option value="G">Grupo G</option>
-                                    <option value="H">Grupo H</option>
-                                </select>
+                                <label>Grupo</label>
+                                <div id="my-group-toggle" class="group-toggle">
+                                    <button type="button" class="view-toggle__button group-toggle__button active" data-group="ALL">Todos</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="A">A</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="B">B</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="C">C</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="D">D</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="E">E</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="F">F</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="G">G</button>
+                                    <button type="button" class="view-toggle__button group-toggle__button" data-group="H">H</button>
+                                </div>
                             </div>
                         </div>
                         <div class="filter-field">
@@ -254,7 +254,8 @@
         const myPredictionsFilterBar = document.getElementById('my-predictions-filters');
         const myPredictionsStageSelect = document.getElementById('my-stage-filter');
         const myPredictionsGroupField = document.getElementById('my-group-filter-field');
-        const myPredictionsGroupSelect = document.getElementById('my-group-filter');
+        const myPredictionsGroupToggle = document.getElementById('my-group-toggle');
+        const myPredictionsGroupButtons = myPredictionsGroupToggle ? myPredictionsGroupToggle.querySelectorAll('.group-toggle__button') : [];
         const myPredictionsStatusSelect = document.getElementById('my-status-filter');
 
         let gamesForPrediction = []; // To store games that are upcoming for prediction
@@ -823,13 +824,20 @@
             return resolveStageLabel(game);
         }
 
+        function updateMyPredictionsGroupButtons() {
+            if (!myPredictionsGroupButtons || myPredictionsGroupButtons.length === 0) return;
+            myPredictionsGroupButtons.forEach(button => {
+                button.classList.toggle('active', button.dataset.group === selectedMyPredictionsGroup);
+            });
+        }
+
         function updateMyPredictionsGroupVisibility() {
-            if (!myPredictionsGroupField || !myPredictionsGroupSelect) return;
+            if (!myPredictionsGroupField) return;
             const showGroup = selectedMyPredictionsStage === 'GROUP';
             myPredictionsGroupField.style.display = showGroup ? 'flex' : 'none';
             if (!showGroup) {
                 selectedMyPredictionsGroup = 'ALL';
-                myPredictionsGroupSelect.value = 'ALL';
+                updateMyPredictionsGroupButtons();
             }
         }
 
@@ -842,10 +850,13 @@
                     displayFilteredMyPredictions();
                 });
             }
-            if (myPredictionsGroupSelect) {
-                myPredictionsGroupSelect.addEventListener('change', () => {
-                    selectedMyPredictionsGroup = myPredictionsGroupSelect.value;
-                    displayFilteredMyPredictions();
+            if (myPredictionsGroupButtons && myPredictionsGroupButtons.length > 0) {
+                myPredictionsGroupButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        selectedMyPredictionsGroup = button.dataset.group || 'ALL';
+                        updateMyPredictionsGroupButtons();
+                        displayFilteredMyPredictions();
+                    });
                 });
             }
             if (myPredictionsStatusSelect) {
@@ -913,9 +924,7 @@
                 if (myPredictionsStageSelect) {
                     myPredictionsStageSelect.value = selectedMyPredictionsStage;
                 }
-                if (myPredictionsGroupSelect) {
-                    myPredictionsGroupSelect.value = selectedMyPredictionsGroup;
-                }
+                updateMyPredictionsGroupButtons();
                 if (myPredictionsStatusSelect) {
                     myPredictionsStatusSelect.value = selectedMyPredictionsStatus;
                 }

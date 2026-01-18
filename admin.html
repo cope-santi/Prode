@@ -357,6 +357,8 @@
                             playerName = existing.playerName;
                             userEmail = existing.userEmail || userEmail;
                             latestTimestamp = existing.timestamp;
+                        } else if (!userEmail && existing.userEmail) {
+                            userEmail = existing.userEmail;
                         }
                     }
 
@@ -380,15 +382,20 @@
                     card.className = 'app-card participant-card d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3';
                     const emailLabel = participant.userEmail ? participant.userEmail : 'Sin correo';
                     const lastUpdate = formatTimestamp(participant.timestamp);
+                    const nameValue = participant.playerName || 'Anonimo';
                     card.innerHTML = `
-                        <div>
-                            <h5 class="mb-1">${participant.playerName || 'Anonimo'}</h5>
+                        <div class="flex-grow-1">
+                            <label class="text-muted small">Nombre</label>
+                            <input type="text" class="form-control form-control-sm participant-name-input mb-2" value="${nameValue}">
                             <div class="text-muted small">Correo: ${emailLabel}</div>
                             <div class="text-muted small">UID: ${participant.userId}</div>
                             <div class="text-muted small">Predicciones: ${participant.count}</div>
                             ${lastUpdate ? `<div class="text-muted small">Ultimo envio: ${lastUpdate}</div>` : ''}
                         </div>
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-success btn-sm" data-action="update-participant" data-user-id="${participant.userId}">
+                                Guardar nombre
+                            </button>
                             <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-participant" data-user-id="${participant.userId}" data-user-label="${participant.playerName || participant.userId}">
                                 Eliminar
                             </button>
@@ -445,6 +452,44 @@
             }
         }
 
+        async function updateParticipantName(userId, newName) {
+            const trimmedName = (newName || '').trim();
+            if (!userId) return;
+            if (!trimmedName) {
+                setParticipantsMessage('El nombre no puede estar vacio.', true);
+                return;
+            }
+
+            setParticipantsMessage('Guardando nombre...', false);
+
+            try {
+                const predictionsRef = collection(db, 'predictions');
+                const q = query(
+                    predictionsRef,
+                    where('userId', '==', userId),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                );
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    setParticipantsMessage('No se encontraron predicciones para este usuario.');
+                    return;
+                }
+
+                const updates = [];
+                snapshot.forEach(docSnap => {
+                    updates.push(updateDoc(docSnap.ref, { playerName: trimmedName }));
+                });
+
+                await Promise.all(updates);
+                setParticipantsMessage('Nombre actualizado.', false);
+                await loadParticipants();
+            } catch (error) {
+                console.error("Error updating participant name: ", error);
+                setParticipantsMessage(`Error al actualizar: ${error.message}`, true);
+            }
+        }
+
         if (refreshParticipantsButton) {
             refreshParticipantsButton.addEventListener('click', () => {
                 loadParticipants();
@@ -453,11 +498,22 @@
 
         if (adminParticipantsList) {
             adminParticipantsList.addEventListener('click', (event) => {
-                const button = event.target.closest('[data-action="delete-participant"]');
-                if (!button) return;
-                const userId = button.getAttribute('data-user-id');
-                const label = button.getAttribute('data-user-label');
-                deleteParticipant(userId, label);
+                const deleteButton = event.target.closest('[data-action="delete-participant"]');
+                if (deleteButton) {
+                    const userId = deleteButton.getAttribute('data-user-id');
+                    const label = deleteButton.getAttribute('data-user-label');
+                    deleteParticipant(userId, label);
+                    return;
+                }
+
+                const updateButton = event.target.closest('[data-action="update-participant"]');
+                if (updateButton) {
+                    const userId = updateButton.getAttribute('data-user-id');
+                    const card = updateButton.closest('.participant-card');
+                    const input = card ? card.querySelector('.participant-name-input') : null;
+                    const newName = input ? input.value : '';
+                    updateParticipantName(userId, newName);
+                }
             });
         }
 
