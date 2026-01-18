@@ -161,10 +161,47 @@
 
             <div id="my-predictions-section" class="app-card prediction-section" style="display: none;">
                 <h2 class="section-heading">Mis predicciones del Mundial 2026</h2>
-                <!-- Phase Selector for My Predictions -->
-                <div id="my-predictions-phase-selector" class="gameweek-selector text-center mb-4" style="display: none;">
-                    <h5 class="mb-3">Filtrar por fase:</h5>
-                    <div id="my-predictions-phase-buttons"></div>
+                <div id="my-predictions-filters" class="filter-bar" style="display: none;">
+                    <div class="filter-bar__row">
+                        <div class="filter-stack">
+                            <div class="filter-field">
+                                <label for="my-stage-filter">Etapa</label>
+                                <select id="my-stage-filter">
+                                    <option value="ALL">Todas</option>
+                                    <option value="GROUP">Grupos</option>
+                                    <option value="R32">Ronda de 32</option>
+                                    <option value="R16">Octavos</option>
+                                    <option value="QF">Cuartos</option>
+                                    <option value="SF">Semis</option>
+                                    <option value="3P">Tercer puesto</option>
+                                    <option value="FINAL">Final</option>
+                                </select>
+                            </div>
+                            <div class="filter-field" id="my-group-filter-field" style="display: none;">
+                                <label for="my-group-filter">Grupo</label>
+                                <select id="my-group-filter">
+                                    <option value="ALL">Todos</option>
+                                    <option value="A">Grupo A</option>
+                                    <option value="B">Grupo B</option>
+                                    <option value="C">Grupo C</option>
+                                    <option value="D">Grupo D</option>
+                                    <option value="E">Grupo E</option>
+                                    <option value="F">Grupo F</option>
+                                    <option value="G">Grupo G</option>
+                                    <option value="H">Grupo H</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="filter-field">
+                            <label for="my-status-filter">Estado</label>
+                            <select id="my-status-filter">
+                                <option value="ALL">Todos</option>
+                                <option value="finished">Finalizados</option>
+                                <option value="live">En vivo</option>
+                                <option value="upcoming">Proximos</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div id="my-predictions-list" class="game-list">
                     <p class="text-center">Todavía no hay predicciones.</p>
@@ -201,7 +238,7 @@
         import { getAuth, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
-        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./js/tournament-config.js";
         
         mountNavbar({ activeKey: "home" });
 
@@ -214,11 +251,17 @@
         // New References for My Predictions section
         const myPredictionsSection = document.getElementById('my-predictions-section');
         const myPredictionsList = document.getElementById('my-predictions-list');
+        const myPredictionsFilterBar = document.getElementById('my-predictions-filters');
+        const myPredictionsStageSelect = document.getElementById('my-stage-filter');
+        const myPredictionsGroupField = document.getElementById('my-group-filter-field');
+        const myPredictionsGroupSelect = document.getElementById('my-group-filter');
+        const myPredictionsStatusSelect = document.getElementById('my-status-filter');
 
         let gamesForPrediction = []; // To store games that are upcoming for prediction
         let currentUserId = null; // To store the authenticated user's ID
         let currentUserEmail = null; // To store the authenticated user's email
         let allTeams = [];
+        let teamLogoMap = new Map();
         let stageUnlocks = {};
         let userPredictionsByGame = new Map();
 
@@ -408,6 +451,9 @@
                 // Hide My Predictions section and clear its content
                 myPredictionsSection.style.display = 'none';
                 myPredictionsList.innerHTML = '<p class="text-center">Todavía no hay predicciones.</p>'; // Clear display
+                if (myPredictionsFilterBar) {
+                    myPredictionsFilterBar.style.display = 'none';
+                }
                 userPredictionsByGame = new Map();
                 loadGames();
 
@@ -484,14 +530,6 @@
             predictionFormGamesDiv.innerHTML = 'Cargando partidos...';
 
             try {
-                // Create a quick lookup map for team logos from the globally populated 'allTeams'
-                const teamLogoMap = new Map();
-                allTeams.forEach(team => {
-                    if (team.name && team.logoUrl) {
-                        teamLogoMap.set(team.name, team.logoUrl);
-                    }
-                });
-
                 const gamesRef = collection(db, 'games');
                 const q = query(
                     gamesRef,
@@ -712,6 +750,7 @@
                         const predictionData = {
                             userId: currentUserId,
                             playerName: playerName,
+                            userEmail: currentUserEmail || '',
                             gameId: gameId,
                             predictedHomeScore: prediction.predictedHomeScore,
                             predictedAwayScore: prediction.predictedAwayScore,
@@ -765,12 +804,65 @@
         // Global variables for My Predictions filtering
         let allUserPredictions = [];
         let gamesMapForPredictions = new Map();
-        let selectedMyPredictionsPhase = null;
-        const myPredictionsPhaseSelector = document.getElementById('my-predictions-phase-selector');
+        let selectedMyPredictionsStage = 'ALL';
+        let selectedMyPredictionsGroup = 'ALL';
+        let selectedMyPredictionsStatus = 'ALL';
+        let myPredictionsFiltersInitialized = false;
+
+        function normalizeGameStatus(game) {
+            const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+            return statusValue === 'in_play' ? 'live' : statusValue;
+        }
+
+        function resolvePredictionPhaseLabel(game) {
+            const stageValue = String(game.Stage || game.stage || '').toUpperCase();
+            const groupValue = String(game.Group || game.group || '').toUpperCase();
+            if (stageValue === 'GROUP' && groupValue) {
+                return `Grupo ${groupValue}`;
+            }
+            return resolveStageLabel(game);
+        }
+
+        function updateMyPredictionsGroupVisibility() {
+            if (!myPredictionsGroupField || !myPredictionsGroupSelect) return;
+            const showGroup = selectedMyPredictionsStage === 'GROUP';
+            myPredictionsGroupField.style.display = showGroup ? 'flex' : 'none';
+            if (!showGroup) {
+                selectedMyPredictionsGroup = 'ALL';
+                myPredictionsGroupSelect.value = 'ALL';
+            }
+        }
+
+        function initializeMyPredictionsFilters() {
+            if (myPredictionsFiltersInitialized) return;
+            if (myPredictionsStageSelect) {
+                myPredictionsStageSelect.addEventListener('change', () => {
+                    selectedMyPredictionsStage = myPredictionsStageSelect.value;
+                    updateMyPredictionsGroupVisibility();
+                    displayFilteredMyPredictions();
+                });
+            }
+            if (myPredictionsGroupSelect) {
+                myPredictionsGroupSelect.addEventListener('change', () => {
+                    selectedMyPredictionsGroup = myPredictionsGroupSelect.value;
+                    displayFilteredMyPredictions();
+                });
+            }
+            if (myPredictionsStatusSelect) {
+                myPredictionsStatusSelect.addEventListener('change', () => {
+                    selectedMyPredictionsStatus = myPredictionsStatusSelect.value;
+                    displayFilteredMyPredictions();
+                });
+            }
+            myPredictionsFiltersInitialized = true;
+        }
 
         async function loadMyPredictions() {
             if (!currentUserId) {
                 myPredictionsList.innerHTML = '<p class="text-center">Inicia sesión para ver tus predicciones.</p>';
+                if (myPredictionsFilterBar) {
+                    myPredictionsFilterBar.style.display = 'none';
+                }
                 return;
             }
 
@@ -787,7 +879,9 @@
 
                 if (snapshot.empty) {
                     myPredictionsList.innerHTML = '<p class="text-center">Todavía no cargaste predicciones.</p>';
-                    myPredictionsPhaseSelector.style.display = 'none';
+                    if (myPredictionsFilterBar) {
+                        myPredictionsFilterBar.style.display = 'none';
+                    }
                     return;
                 }
 
@@ -812,43 +906,20 @@
                     gamesMapForPredictions.set(doc.id, doc.data());
                 });
 
-                // Extract unique phases from user's predictions
-                const phaseSet = new Set();
-                allUserPredictions.forEach(pred => {
-                    const game = gamesMapForPredictions.get(pred.gameId);
-                    const stageKey = game ? resolveStageKey(game) : null;
-                    if (stageKey) {
-                        phaseSet.add(stageKey);
-                    }
-                });
-
-                const phaseList = sortStageKeys(Array.from(phaseSet));
-
-                // Show phase selector only if there are multiple phases
-                if (phaseList.length > 1) {
-                    myPredictionsPhaseSelector.style.display = 'block';
-                    // Select the latest phase by default
-                    selectedMyPredictionsPhase = phaseList[phaseList.length - 1];
-                    
-                    // Import the helper functions
-                    const { createPhaseSelector, updatePhaseSelectorState } = await import('./js/ui-helpers.js');
-                    
-                    createPhaseSelector(
-                        phaseList,
-                        (phaseKey) => {
-                            selectedMyPredictionsPhase = phaseKey;
-                            updatePhaseSelectorState('my-predictions-phase-buttons', phaseKey);
-                            displayFilteredMyPredictions();
-                        },
-                        'my-predictions-phase-buttons',
-                        phaseList[phaseList.length - 1],
-                        'myPredictionsPhaseSelector',
-                        (phaseKey) => resolveStageLabel({ StageKey: phaseKey })
-                    );
-                } else if (phaseList.length === 1) {
-                    myPredictionsPhaseSelector.style.display = 'none';
-                    selectedMyPredictionsPhase = phaseList[0];
+                if (myPredictionsFilterBar) {
+                    myPredictionsFilterBar.style.display = 'block';
                 }
+                initializeMyPredictionsFilters();
+                if (myPredictionsStageSelect) {
+                    myPredictionsStageSelect.value = selectedMyPredictionsStage;
+                }
+                if (myPredictionsGroupSelect) {
+                    myPredictionsGroupSelect.value = selectedMyPredictionsGroup;
+                }
+                if (myPredictionsStatusSelect) {
+                    myPredictionsStatusSelect.value = selectedMyPredictionsStatus;
+                }
+                updateMyPredictionsGroupVisibility();
 
                 displayFilteredMyPredictions();
 
@@ -858,17 +929,36 @@
             }
         }
 
-        // Display filtered My Predictions based on selected phase
+        // Display filtered My Predictions based on selected filters
         function displayFilteredMyPredictions() {
-            const filteredPredictions = selectedMyPredictionsPhase
-                ? allUserPredictions.filter(pred => {
-                    const game = gamesMapForPredictions.get(pred.gameId);
-                    return game && resolveStageKey(game) === selectedMyPredictionsPhase;
-                })
-                : allUserPredictions;
+            const filteredPredictions = allUserPredictions.filter(pred => {
+                const game = gamesMapForPredictions.get(pred.gameId);
+                if (!game) return false;
+
+                const stageId = getStageIdFromGame(game);
+                if (selectedMyPredictionsStage !== 'ALL' && stageId !== selectedMyPredictionsStage) {
+                    return false;
+                }
+
+                if (selectedMyPredictionsStage === 'GROUP' && selectedMyPredictionsGroup !== 'ALL') {
+                    const groupValue = String(game.Group || game.group || '').toUpperCase();
+                    if (groupValue !== selectedMyPredictionsGroup) {
+                        return false;
+                    }
+                }
+
+                if (selectedMyPredictionsStatus !== 'ALL') {
+                    const normalizedStatus = normalizeGameStatus(game);
+                    if (normalizedStatus !== selectedMyPredictionsStatus) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
 
             if (filteredPredictions.length === 0) {
-                myPredictionsList.innerHTML = '<p class="text-center">No hay predicciones para esta fase.</p>';
+                myPredictionsList.innerHTML = '<p class="text-center">No hay predicciones para este filtro.</p>';
                 return;
             }
 
@@ -880,7 +970,7 @@
 
                 if (game) {
                     const predictionCard = document.createElement('div');
-                    predictionCard.classList.add('app-card','game-card');
+                    predictionCard.classList.add('app-card', 'game-card');
 
                     let predictionTime = 'N/A';
                     if (prediction.timestamp) {
@@ -891,25 +981,35 @@
                         }
                     }
 
-                    const phaseLabel = resolveStageLabel(game);
-
-                    const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+                    const phaseLabel = resolvePredictionPhaseLabel(game);
+                    const statusValue = normalizeGameStatus(game);
                     const statusLabelMap = {
                         finished: 'Finalizado',
                         live: 'En vivo',
-                        in_play: 'En vivo',
-                        upcoming: 'Próximo'
+                        upcoming: 'Proximo'
                     };
-                    const statusClass = statusValue === 'in_play' ? 'live' : statusValue;
+                    const statusClass = statusValue === 'live' ? 'live' : statusValue;
                     const statusLabel = statusLabelMap[statusValue] || statusValue;
                     const predictedHome = prediction.predictedHomeScore ?? '-';
                     const predictedAway = prediction.predictedAwayScore ?? '-';
+                    const homeLogoUrl = teamLogoMap.get(game.HomeTeam) || '';
+                    const awayLogoUrl = teamLogoMap.get(game.AwayTeam) || '';
 
                     predictionCard.innerHTML = `
-                        <h3>${game.HomeTeam} vs ${game.AwayTeam}</h3>
+                        <div class="teams-row">
+                            <div class="team">
+                                ${homeLogoUrl ? `<img src="${homeLogoUrl}" alt="${game.HomeTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                                <p class="team-name">${game.HomeTeam}</p>
+                            </div>
+                            <div class="vs-separator">vs</div>
+                            <div class="team">
+                                ${awayLogoUrl ? `<img src="${awayLogoUrl}" alt="${game.AwayTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                                <p class="team-name">${game.AwayTeam}</p>
+                            </div>
+                        </div>
                         <p><strong>Fase:</strong> ${phaseLabel}</p>
-                        <p><strong>Tu predicción:</strong> ${predictedHome} - ${predictedAway}</p>
                         <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
+                        <p><strong>Tu predicción:</strong> ${predictedHome} - ${predictedAway}</p>
                         ${statusValue === 'finished' ? `<p><strong>Resultado real:</strong> ${game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?'} - ${game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?'}</p>` : ''}
                         <p><small>Enviado: ${predictionTime}</small></p>
                     `;
@@ -946,6 +1046,12 @@
                 allTeams = [];
                 teamsSnapshot.forEach(doc => {
                     allTeams.push({ id: doc.id, ...doc.data() });
+                });
+                teamLogoMap = new Map();
+                allTeams.forEach(team => {
+                    if (team.name && team.logoUrl) {
+                        teamLogoMap.set(team.name, team.logoUrl);
+                    }
                 });
                 console.log("Teams loaded:", allTeams.length, "teams");
 

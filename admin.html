@@ -179,6 +179,18 @@
                         </div>
                     </div>
                     <p id="gameMessage" class="mt-3 text-center"></p>
+
+                    <hr class="my-5">
+                    <h2 class="mb-3">Participantes</h2>
+                    <p class="text-muted small">Lista basada en las predicciones guardadas.</p>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                        <button id="refreshParticipantsButton" type="button" class="btn btn-outline-light btn-sm">Actualizar</button>
+                        <span id="admin-participants-count" class="text-muted small"></span>
+                    </div>
+                    <div id="admin-participants-list" class="game-list">
+                        <p class="text-center text-muted">Cargando participantes...</p>
+                    </div>
+                    <p id="admin-participants-message" class="mt-3 text-center"></p>
                 </div>
             </div>
         </div>
@@ -194,7 +206,7 @@
         import { mountNavbar } from "./js/layout.js";
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, query, orderBy, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, query, orderBy, where, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         // Import Authentication functions
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
@@ -229,6 +241,10 @@
         const authMessageDiv = document.getElementById('auth-message');
         const forgotPasswordLink = document.getElementById('forgotPasswordLink');
         const adminGameFormSection = document.getElementById('admin-game-form-section');
+        const adminParticipantsList = document.getElementById('admin-participants-list');
+        const adminParticipantsMessage = document.getElementById('admin-participants-message');
+        const adminParticipantsCount = document.getElementById('admin-participants-count');
+        const refreshParticipantsButton = document.getElementById('refreshParticipantsButton');
 
         // Global data
         let currentUserId = null;
@@ -286,6 +302,163 @@
             } catch (error) {
                 console.error("Error initializing admin dropdowns:", error);
             }
+        }
+
+        function setParticipantsMessage(message, isError = false) {
+            if (!adminParticipantsMessage) return;
+            adminParticipantsMessage.textContent = message;
+            adminParticipantsMessage.style.color = isError ? 'red' : 'inherit';
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            const rawValue = timestamp.toDate ? timestamp.toDate() : timestamp;
+            const parsed = new Date(rawValue);
+            if (Number.isNaN(parsed.getTime())) return '';
+            return parsed.toLocaleString();
+        }
+
+        async function loadParticipants() {
+            if (!adminParticipantsList) return;
+            adminParticipantsList.innerHTML = '<p class="text-center text-muted">Cargando participantes...</p>';
+            setParticipantsMessage('');
+
+            try {
+                const predictionsRef = collection(db, 'predictions');
+                const q = query(
+                    predictionsRef,
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                );
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    adminParticipantsList.innerHTML = '<p class="text-center text-muted">No hay participantes todavia.</p>';
+                    if (adminParticipantsCount) {
+                        adminParticipantsCount.textContent = '0 participantes';
+                    }
+                    return;
+                }
+
+                const participantsMap = new Map();
+                snapshot.forEach(docSnap => {
+                    const prediction = docSnap.data();
+                    const userId = prediction.userId;
+                    if (!userId) return;
+
+                    const timestamp = prediction.timestamp ? new Date(prediction.timestamp.toDate ? prediction.timestamp.toDate() : prediction.timestamp).getTime() : 0;
+                    const existing = participantsMap.get(userId);
+                    const count = existing ? existing.count + 1 : 1;
+                    let playerName = prediction.playerName || 'Anonimo';
+                    let userEmail = prediction.userEmail || '';
+                    let latestTimestamp = timestamp;
+
+                    if (existing) {
+                        if (existing.timestamp >= timestamp) {
+                            playerName = existing.playerName;
+                            userEmail = existing.userEmail || userEmail;
+                            latestTimestamp = existing.timestamp;
+                        }
+                    }
+
+                    participantsMap.set(userId, {
+                        userId,
+                        playerName,
+                        userEmail,
+                        timestamp: latestTimestamp,
+                        count
+                    });
+                });
+
+                const participants = Array.from(participantsMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+                if (adminParticipantsCount) {
+                    adminParticipantsCount.textContent = `${participants.length} participantes`;
+                }
+
+                adminParticipantsList.innerHTML = '';
+                participants.forEach(participant => {
+                    const card = document.createElement('div');
+                    card.className = 'app-card participant-card d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3';
+                    const emailLabel = participant.userEmail ? participant.userEmail : 'Sin correo';
+                    const lastUpdate = formatTimestamp(participant.timestamp);
+                    card.innerHTML = `
+                        <div>
+                            <h5 class="mb-1">${participant.playerName || 'Anonimo'}</h5>
+                            <div class="text-muted small">Correo: ${emailLabel}</div>
+                            <div class="text-muted small">UID: ${participant.userId}</div>
+                            <div class="text-muted small">Predicciones: ${participant.count}</div>
+                            ${lastUpdate ? `<div class="text-muted small">Ultimo envio: ${lastUpdate}</div>` : ''}
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-participant" data-user-id="${participant.userId}" data-user-label="${participant.playerName || participant.userId}">
+                                Eliminar
+                            </button>
+                        </div>
+                    `;
+                    adminParticipantsList.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Error loading participants: ", error);
+                adminParticipantsList.innerHTML = '<p class="text-center text-muted">No se pudieron cargar los participantes.</p>';
+                setParticipantsMessage(`Error al cargar participantes: ${error.message}`, true);
+            }
+        }
+
+        async function deleteParticipant(userId, label) {
+            if (!userId) return;
+            const safeLabel = label || userId;
+            const confirmDelete = window.confirm(`Eliminar participante ${safeLabel}? Se borraran sus predicciones.`);
+            if (!confirmDelete) return;
+
+            setParticipantsMessage('Eliminando participante...', false);
+
+            try {
+                const predictionsRef = collection(db, 'predictions');
+                const q = query(predictionsRef, where('userId', '==', userId));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    setParticipantsMessage('No se encontraron predicciones para este usuario.');
+                    await loadParticipants();
+                    return;
+                }
+
+                const deletions = [];
+                snapshot.forEach(docSnap => {
+                    const prediction = docSnap.data();
+                    if (prediction.tournamentId !== TOURNAMENT_CONFIG.tournamentId) return;
+                    deletions.push(deleteDoc(docSnap.ref));
+                });
+
+                if (deletions.length === 0) {
+                    setParticipantsMessage('No hay predicciones para borrar en este torneo.');
+                    await loadParticipants();
+                    return;
+                }
+
+                await Promise.all(deletions);
+                setParticipantsMessage('Participante eliminado y predicciones borradas.', false);
+                await loadParticipants();
+            } catch (error) {
+                console.error("Error deleting participant: ", error);
+                setParticipantsMessage(`Error al eliminar: ${error.message}`, true);
+            }
+        }
+
+        if (refreshParticipantsButton) {
+            refreshParticipantsButton.addEventListener('click', () => {
+                loadParticipants();
+            });
+        }
+
+        if (adminParticipantsList) {
+            adminParticipantsList.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-action="delete-participant"]');
+                if (!button) return;
+                const userId = button.getAttribute('data-user-id');
+                const label = button.getAttribute('data-user-label');
+                deleteParticipant(userId, label);
+            });
         }
 
         /**
@@ -376,6 +549,7 @@
                     toggleAdminForm(true);
                     // Populate admin dropdowns and datalist when admin signs in
                     await initializeAdminDropdowns();
+                    await loadParticipants();
                 } else {
                     console.log("Non-admin user detected. Redirecting to index.html");
                     // Redirect non-admin users to index.html

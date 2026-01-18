@@ -112,6 +112,12 @@ body {
     text-align: left;
 }
 
+.filter-stack {
+    display: grid;
+    gap: 12px;
+    align-content: start;
+}
+
 .filter-field label {
     font-size: 0.7rem;
     text-transform: uppercase;

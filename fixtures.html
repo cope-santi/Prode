@@ -25,31 +25,33 @@
 
         <div class="filter-bar" id="fixtures-filter-bar">
             <div class="filter-bar__row">
-                <div class="filter-field">
-                    <label for="stage-filter">Etapa</label>
-                    <select id="stage-filter">
-                        <option value="GROUP">Grupos</option>
-                        <option value="R32">Ronda de 32</option>
-                        <option value="R16">Octavos</option>
-                        <option value="QF">Cuartos</option>
-                        <option value="SF">Semis</option>
-                        <option value="3P">Tercer puesto</option>
-                        <option value="FINAL">Final</option>
-                    </select>
-                </div>
-                <div class="filter-field" id="group-filter-field" style="display: none;">
-                    <label for="group-filter">Grupo</label>
-                    <select id="group-filter">
-                        <option value="ALL">Todos</option>
-                        <option value="A">Grupo A</option>
-                        <option value="B">Grupo B</option>
-                        <option value="C">Grupo C</option>
-                        <option value="D">Grupo D</option>
-                        <option value="E">Grupo E</option>
-                        <option value="F">Grupo F</option>
-                        <option value="G">Grupo G</option>
-                        <option value="H">Grupo H</option>
-                    </select>
+                <div class="filter-stack">
+                    <div class="filter-field">
+                        <label for="stage-filter">Etapa</label>
+                        <select id="stage-filter">
+                            <option value="GROUP">Grupos</option>
+                            <option value="R32">Ronda de 32</option>
+                            <option value="R16">Octavos</option>
+                            <option value="QF">Cuartos</option>
+                            <option value="SF">Semis</option>
+                            <option value="3P">Tercer puesto</option>
+                            <option value="FINAL">Final</option>
+                        </select>
+                    </div>
+                    <div class="filter-field" id="group-filter-field" style="display: none;">
+                        <label for="group-filter">Grupo</label>
+                        <select id="group-filter">
+                            <option value="ALL">Todos</option>
+                            <option value="A">Grupo A</option>
+                            <option value="B">Grupo B</option>
+                            <option value="C">Grupo C</option>
+                            <option value="D">Grupo D</option>
+                            <option value="E">Grupo E</option>
+                            <option value="F">Grupo F</option>
+                            <option value="G">Grupo G</option>
+                            <option value="H">Grupo H</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="filter-field">
                     <label for="team-search">Buscar equipo</label>
