@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fases - Mundial 2026</title>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="stylesheet" href="css/layout.css?v=persistent-shell-3">
@@ -77,14 +80,13 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { calculatePoints, calculatePlayerStats, getPlayerStats, getScoreClass } from "./js/calculations.js";
-        import { firebaseConfig } from "./js/firebase-config.js";
+        import { initFirebase } from "./js/firebase-config.js?v=opt1";
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
 
         mountNavbar({ activeKey: "matches" });
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const { app, db } = initFirebase();
 
         loadSyncStatus();
 
