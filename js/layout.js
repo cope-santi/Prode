@@ -8,6 +8,7 @@ const MUSIC_STORAGE_KEY = 'prodeMusicState';
 let musicAudio = null;
 let musicTimer = null;
 let shellFrame = null;
+let shellLoader = null;
 
 export function mountNavbar(options = {}) {
     const {
@@ -140,6 +141,7 @@ function openInShell(rawHref, options = {}) {
     const publicUrl = buildPublicUrl(url.href);
     const frame = ensureShellFrame();
 
+    showShellLoader();
     frame.src = frameUrl;
     setActiveNav(publicPath);
 
@@ -155,22 +157,44 @@ function ensureShellFrame() {
     shell.className = 'app-shell';
     shell.setAttribute('aria-label', 'Contenido de la aplicacion');
 
+    shellLoader = document.createElement('div');
+    shellLoader.className = 'app-shell__loader';
+    shellLoader.textContent = 'Cargando...';
+
     shellFrame = document.createElement('iframe');
     shellFrame.className = 'app-shell__frame';
     shellFrame.title = 'Contenido del Prode';
     shellFrame.setAttribute('data-shell-frame', 'true');
+    shellFrame.addEventListener('load', () => {
+        hideOriginalPageContent(shell);
+        hideShellLoader();
+    });
+
+    shell.appendChild(shellLoader);
     shell.appendChild(shellFrame);
     document.body.appendChild(shell);
 
+    document.documentElement.classList.add('app-shell-active');
+    document.body.classList.add('app-shell-active');
+    return shellFrame;
+}
+
+function hideOriginalPageContent(shell) {
     Array.from(document.body.children).forEach(child => {
         if (child.id === 'app-navbar' || child === shell) return;
         child.classList.add('app-shell-hidden');
         child.setAttribute('aria-hidden', 'true');
     });
+}
 
-    document.documentElement.classList.add('app-shell-active');
-    document.body.classList.add('app-shell-active');
-    return shellFrame;
+function showShellLoader() {
+    if (!shellLoader) return;
+    shellLoader.hidden = false;
+}
+
+function hideShellLoader() {
+    if (!shellLoader) return;
+    shellLoader.hidden = true;
 }
 
 function buildEmbeddedUrl(pathname, search = '', hash = '') {
@@ -180,7 +204,7 @@ function buildEmbeddedUrl(pathname, search = '', hash = '') {
         params.forEach((value, key) => url.searchParams.set(key, value));
     }
     url.searchParams.set('embedded', '1');
-    url.searchParams.set('v', 'persistent-shell-2');
+    url.searchParams.set('v', 'persistent-shell-3');
     url.hash = hash || '';
     return url.pathname + url.search + url.hash;
 }

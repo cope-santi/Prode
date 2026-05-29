@@ -51,6 +51,25 @@ body {
     background: #0b1220;
 }
 
+.app-shell__loader {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 2;
+    color: #ffffff;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: radial-gradient(700px circle at 50% 20%, rgba(23, 201, 100, 0.22), transparent 55%),
+        #0b1220;
+}
+
+.app-shell__loader[hidden] {
+    display: none;
+}
+
 .is-embedded-page body {
     margin: 0;
 }
