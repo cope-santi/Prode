@@ -3,10 +3,9 @@ const NAV_ITEMS = [
     { key: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html' }
 ];
 
-const MUSIC_VIDEO_ID = 'X9CsK_nuqdE';
+const MUSIC_SRC = '/mp3.mp3?v=local-audio-1';
 const MUSIC_STORAGE_KEY = 'prodeMusicState';
-let youtubeApiPromise = null;
-let musicPlayer = null;
+let musicAudio = null;
 let musicTimer = null;
 let shellFrame = null;
 
@@ -181,7 +180,7 @@ function buildEmbeddedUrl(pathname, search = '', hash = '') {
         params.forEach((value, key) => url.searchParams.set(key, value));
     }
     url.searchParams.set('embedded', '1');
-    url.searchParams.set('v', 'persistent-shell-1');
+    url.searchParams.set('v', 'persistent-shell-2');
     url.hash = hash || '';
     return url.pathname + url.search + url.hash;
 }
@@ -206,6 +205,9 @@ function setActiveNav(rawHref) {
     });
 }
 
+// ============================================
+// Background music (local mp3, no video/YouTube)
+// ============================================
 function mountMusicPlayer(container) {
     const controls = {
         play: container.querySelector('[data-music-action="play"]'),
@@ -215,119 +217,91 @@ function mountMusicPlayer(container) {
     const host = container.querySelector('#music-player-host');
     if (!host || !controls.play || !controls.pause || !controls.mute) return;
 
+    const audio = ensureAudio(host);
+    audio._controls = controls; // keep the sync handlers pointed at the latest buttons
+    const savedState = readMusicState();
+    audio.muted = !!savedState.muted;
+
+    // Resume playback position once metadata (duration) is known.
+    const applyResume = () => {
+        const resumeTime = getResumeTime(savedState);
+        if (resumeTime > 0 && Number.isFinite(resumeTime)) {
+            const duration = audio.duration;
+            try {
+                audio.currentTime = (duration && Number.isFinite(duration)) ? (resumeTime % duration) : resumeTime;
+            } catch (error) {
+                /* setting currentTime before it's seekable can throw; ignore */
+            }
+        }
+    };
+    if (audio.readyState >= 1) applyResume();
+    else audio.addEventListener('loadedmetadata', applyResume, { once: true });
+
+    updateMusicControls(controls, { playing: !audio.paused, muted: audio.muted });
+
     controls.play.addEventListener('click', () => {
-        ensurePlayer(host, controls).then(player => {
-            player.playVideo();
-            saveMusicState({ playing: true });
-            updateMusicControls(controls, { playing: true });
-        });
+        audio.play()
+            .then(() => {
+                saveMusicState({ playing: true });
+                updateMusicControls(controls, { playing: true });
+            })
+            .catch(error => console.warn('No se pudo reproducir la musica:', error));
     });
 
     controls.pause.addEventListener('click', () => {
-        if (!musicPlayer) return;
-        musicPlayer.pauseVideo();
-        saveMusicState({ playing: false, time: getPlayerTime() });
+        audio.pause();
+        saveMusicState({ playing: false, time: audio.currentTime });
         updateMusicControls(controls, { playing: false });
     });
 
     controls.mute.addEventListener('click', () => {
-        ensurePlayer(host, controls).then(player => {
-            const nextMuted = !player.isMuted();
-            if (nextMuted) {
-                player.mute();
-            } else {
-                player.unMute();
-            }
-            saveMusicState({ muted: nextMuted });
-            updateMusicControls(controls, { muted: nextMuted });
-        });
+        audio.muted = !audio.muted;
+        saveMusicState({ muted: audio.muted });
+        updateMusicControls(controls, { muted: audio.muted });
     });
 
-    const savedState = readMusicState();
-    updateMusicControls(controls, savedState);
-    ensurePlayer(host, controls).then(player => {
-        if (savedState.muted) player.mute();
-        if (savedState.playing) {
-            player.playVideo();
-        }
-    });
+    // Audio-level listeners and timers must be wired only once, even if the navbar
+    // is re-mounted; they always target the latest controls via audio._controls.
+    if (!audio._wired) {
+        audio._wired = true;
+        audio.addEventListener('play', () => updateMusicControls(audio._controls, { playing: true }));
+        audio.addEventListener('pause', () => updateMusicControls(audio._controls, { playing: false }));
+        startMusicTimer();
+        window.addEventListener('beforeunload', persistCurrentMusicState);
+    }
+
+    // Best-effort resume: browsers block autoplay until a user gesture, so if it
+    // is blocked we leave the controls showing "paused" until the user hits Play.
+    if (savedState.playing && audio.paused) {
+        audio.play()
+            .then(() => updateMusicControls(controls, { playing: true }))
+            .catch(() => updateMusicControls(controls, { playing: false }));
+    }
 }
 
-function ensurePlayer(host, controls) {
-    if (musicPlayer) return Promise.resolve(musicPlayer);
-
-    return loadYouTubeApi().then(() => new Promise(resolve => {
-        const savedState = readMusicState();
-        const startSeconds = getResumeTime(savedState);
-        const playerId = `music-player-${Date.now()}`;
-        host.innerHTML = `<div id="${playerId}"></div>`;
-
-        musicPlayer = new window.YT.Player(playerId, {
-            width: '200',
-            height: '113',
-            videoId: MUSIC_VIDEO_ID,
-            playerVars: {
-                autoplay: savedState.playing ? 1 : 0,
-                controls: 0,
-                disablekb: 1,
-                modestbranding: 1,
-                playsinline: 1,
-                rel: 0,
-                start: Math.max(0, Math.floor(startSeconds))
-            },
-            events: {
-                onReady: event => {
-                    if (savedState.muted) event.target.mute();
-                    if (startSeconds > 0) event.target.seekTo(startSeconds, true);
-                    startMusicTimer();
-                    window.addEventListener('beforeunload', persistCurrentMusicState);
-                    resolve(event.target);
-                },
-                onStateChange: event => {
-                    const playing = event.data === window.YT.PlayerState.PLAYING;
-                    const paused = event.data === window.YT.PlayerState.PAUSED;
-                    if (playing || paused) {
-                        saveMusicState({ playing, time: getPlayerTime() });
-                        updateMusicControls(controls, { playing });
-                    }
-                }
-            }
-        });
-    }));
-}
-
-function loadYouTubeApi() {
-    if (window.YT && window.YT.Player) return Promise.resolve();
-    if (youtubeApiPromise) return youtubeApiPromise;
-
-    youtubeApiPromise = new Promise(resolve => {
-        const previousCallback = window.onYouTubeIframeAPIReady;
-        window.onYouTubeIframeAPIReady = () => {
-            if (typeof previousCallback === 'function') previousCallback();
-            resolve();
-        };
-
-        if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-            const script = document.createElement('script');
-            script.src = 'https://www.youtube.com/iframe_api';
-            document.head.appendChild(script);
-        }
-    });
-
-    return youtubeApiPromise;
+function ensureAudio(host) {
+    if (!musicAudio) {
+        musicAudio = new Audio(MUSIC_SRC);
+        musicAudio.loop = true;
+        musicAudio.preload = 'auto';
+    }
+    if (musicAudio.parentNode !== host) {
+        host.appendChild(musicAudio); // (re)attach to the current navbar host
+    }
+    return musicAudio;
 }
 
 function readMusicState() {
     try {
         return {
-            playing: true,
+            playing: false,
             muted: false,
             time: 0,
             updatedAt: Date.now(),
             ...JSON.parse(localStorage.getItem(MUSIC_STORAGE_KEY) || '{}')
         };
     } catch (error) {
-        return { playing: true, muted: false, time: 0, updatedAt: Date.now() };
+        return { playing: false, muted: false, time: 0, updatedAt: Date.now() };
     }
 }
 
@@ -348,30 +322,24 @@ function getResumeTime(state) {
     return baseTime + Math.max(0, elapsed);
 }
 
-function getPlayerTime() {
-    if (!musicPlayer || typeof musicPlayer.getCurrentTime !== 'function') return 0;
-    return musicPlayer.getCurrentTime() || 0;
-}
-
 function startMusicTimer() {
     if (musicTimer) clearInterval(musicTimer);
     musicTimer = setInterval(() => {
-        if (!musicPlayer || typeof musicPlayer.getPlayerState !== 'function') return;
-        const playing = musicPlayer.getPlayerState() === window.YT.PlayerState.PLAYING;
+        if (!musicAudio) return;
         saveMusicState({
-            playing,
-            muted: typeof musicPlayer.isMuted === 'function' ? musicPlayer.isMuted() : false,
-            time: getPlayerTime()
+            playing: !musicAudio.paused,
+            muted: musicAudio.muted,
+            time: musicAudio.currentTime || 0
         });
     }, 1000);
 }
 
 function persistCurrentMusicState() {
-    if (!musicPlayer || typeof musicPlayer.getPlayerState !== 'function') return;
+    if (!musicAudio) return;
     saveMusicState({
-        playing: musicPlayer.getPlayerState() === window.YT.PlayerState.PLAYING,
-        muted: typeof musicPlayer.isMuted === 'function' ? musicPlayer.isMuted() : false,
-        time: getPlayerTime()
+        playing: !musicAudio.paused,
+        muted: musicAudio.muted,
+        time: musicAudio.currentTime || 0
     });
 }
 
