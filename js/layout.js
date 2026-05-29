@@ -3,6 +3,8 @@ const NAV_ITEMS = [
     { key: 'leaderboard', label: 'Leaderboard', href: 'leaderboard.html' }
 ];
 
+const MUSIC_VIDEO_ID = 'X9CsK_nuqdE';
+
 export function mountNavbar(options = {}) {
     const {
         activeKey = '',
@@ -27,7 +29,38 @@ export function mountNavbar(options = {}) {
                     ${adminLinkHtml}
                 </div>
                 <div class="topbar__spacer"></div>
+                <div class="topbar-music">
+                    <button class="topbar-music__button" type="button" aria-expanded="false" aria-controls="music-player-panel">
+                        <span class="topbar-music__icon" aria-hidden="true">♪</span>
+                        <span>Musica</span>
+                    </button>
+                    <div class="topbar-music__panel" id="music-player-panel" hidden></div>
+                </div>
             </div>
         </nav>
     `;
+    mountMusicPlayer(container);
+}
+
+function mountMusicPlayer(container) {
+    const button = container.querySelector('.topbar-music__button');
+    const panel = container.querySelector('#music-player-panel');
+    if (!button || !panel) return;
+
+    button.addEventListener('click', () => {
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        button.setAttribute('aria-expanded', String(willOpen));
+        button.classList.toggle('is-active', willOpen);
+
+        if (willOpen && !panel.querySelector('iframe')) {
+            const iframe = document.createElement('iframe');
+            iframe.className = 'topbar-music__iframe';
+            iframe.src = `https://www.youtube-nocookie.com/embed/${MUSIC_VIDEO_ID}?autoplay=1&rel=0`;
+            iframe.title = 'Musica del Prode';
+            iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+            iframe.allowFullscreen = true;
+            panel.appendChild(iframe);
+        }
+    });
 }
