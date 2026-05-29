@@ -336,7 +336,10 @@
         }
 
         function getGameStatus(game) {
-            return String(game.status || game.Status || 'upcoming').toLowerCase();
+            const normalized = String(game.status || game.Status || 'upcoming').toLowerCase();
+            if (normalized === 'scheduled') return 'upcoming';
+            if (normalized === 'in_play') return 'live';
+            return normalized;
         }
 
         // --- UI Element References ---

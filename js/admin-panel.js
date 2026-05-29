@@ -43,7 +43,10 @@ let selectedGameId = null;
 let gamesById = new Map();
 
 function getCanonicalStatus(game) {
-    return game && (game.status || game.Status) ? String(game.status || game.Status).toLowerCase() : 'upcoming';
+    const normalized = game && (game.status || game.Status) ? String(game.status || game.Status).toLowerCase() : 'upcoming';
+    if (normalized === 'scheduled') return 'upcoming';
+    if (normalized === 'in_play') return 'live';
+    return normalized;
 }
 
 /**
