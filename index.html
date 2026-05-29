@@ -133,6 +133,10 @@
                                 <a href="#" id="forgotPasswordLink" class="text-muted small">¿Olvidaste tu contraseña?</a>
                             </div>
                         </div>
+                        <div class="form-group mb-3" id="register-name-group">
+                            <label for="registerName">Nombre <span class="text-muted small">(solo al crear cuenta)</span>:</label>
+                            <input type="text" id="registerName" class="form-control" placeholder="Tu nombre para la tabla" autocomplete="name">
+                        </div>
                         <button id="signInButton" class="btn btn-success me-2">Entrar</button>
                         <button id="signUpButton" class="btn btn-info">Crear cuenta</button>
                         <p id="auth-message" class="text-danger mt-3" style="font-weight: bold;"></p>
@@ -144,9 +148,9 @@
                         <button id="signOutButton" class="btn btn-danger mt-2">Salir</button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="playerName">Tu nombre:</label>
-                    <input type="text" id="playerName" placeholder="Ingresa tu nombre" required>
+                <div class="form-group" id="player-name-row" style="display: none;">
+                    <span>Cargás como: <strong id="playerNameDisplay"></strong></span>
+                    <input type="hidden" id="playerName">
                 </div>
 
                 <div id="prediction-form-games" class="game-list">
@@ -235,7 +239,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, getDoc, setDoc, query, orderBy, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         // Import Authentication functions
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
         import { ADMIN_UID } from "./js/app-config.js";
@@ -342,8 +346,17 @@
             return normalized;
         }
 
+        function resolveDisplayName(user) {
+            if (!user) return '';
+            const name = (user.displayName || '').trim();
+            return name || (user.email ? user.email.split('@')[0] : 'Jugador');
+        }
+
         // --- UI Element References ---
         const playerNameInput = document.getElementById('playerName');
+        const registerNameInput = document.getElementById('registerName');
+        const playerNameDisplay = document.getElementById('playerNameDisplay');
+        const playerNameRow = document.getElementById('player-name-row');
         const submitPredictionsButton = document.getElementById('submitPredictions');
         const predictionMessageDiv = document.getElementById('message');
 
@@ -415,13 +428,16 @@
                 // Update UI for signed-in state
                 loginRegisterFormDiv.style.display = 'none'; // Hide login/register form
                 userStatusDisplayDiv.style.display = 'block'; // Show user status
-                userNameDisplay.textContent = user.email; // Default to email for display name
+                const displayName = resolveDisplayName(user);
+                userNameDisplay.textContent = displayName;
                 userEmailDisplay.textContent = user.email;
                 signOutButton.style.display = 'inline-block';
 
-                // Enable prediction form and pre-fill player name
+                // Enable prediction form; the name comes from the account profile
                 setPredictionFormEnabled(true);
-                playerNameInput.value = user.email.split('@')[0]; // Pre-fill with part of email
+                playerNameInput.value = displayName;
+                if (playerNameDisplay) playerNameDisplay.textContent = displayName;
+                if (playerNameRow) playerNameRow.style.display = 'block';
                 setPredictionMessage('');
                 authMessageDiv.textContent = ''; // Clear auth message
 
@@ -451,6 +467,7 @@
                 // Disable prediction form
                 setPredictionFormEnabled(false);
                 playerNameInput.value = ''; // Clear player name
+                if (playerNameRow) playerNameRow.style.display = 'none';
                 setPredictionMessage('Inicia sesión para enviar predicciones.', 'info');
                 authMessageDiv.textContent = ''; // Clear auth message
 
@@ -477,9 +494,14 @@
         signUpButton.addEventListener('click', async () => {
             const email = userEmailInput.value;
             const password = userPasswordInput.value;
+            const registerName = registerNameInput ? registerNameInput.value.trim() : '';
 
             if (!email || !password) {
                 displayAuthMessage("Ingresa correo y contraseña.", true);
+                return;
+            }
+            if (!registerName) {
+                displayAuthMessage("Ingresa tu nombre para crear la cuenta.", true);
                 return;
             }
             if (password.length < 6) {
@@ -490,9 +512,13 @@
             displayAuthMessage("Creando cuenta...", false);
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: registerName });
                 console.log("User signed up and signed in:", userCredential.user.email);
                 displayAuthMessage("Cuenta creada. Sesión iniciada.", false);
-                // No need to manually update UI here, onAuthStateChanged handles it
+                // onAuthStateChanged fires before updateProfile resolves, so refresh the name here too
+                playerNameInput.value = registerName;
+                if (playerNameDisplay) playerNameDisplay.textContent = registerName;
+                if (userNameDisplay) userNameDisplay.textContent = registerName;
             } catch (error) {
                 console.error("Error signing up:", error.message);
                 displayAuthMessage(`Error al crear cuenta: ${error.message}`, true);
@@ -698,9 +724,9 @@
                 return;
             }
 
-            const playerName = playerNameInput.value.trim();
+            const playerName = (playerNameInput.value || '').trim() || resolveDisplayName(auth.currentUser);
             if (!playerName) {
-                setPredictionMessage('Ingresa tu nombre para guardar la predicción.', 'error');
+                setPredictionMessage('No pudimos determinar tu nombre. Volvé a iniciar sesión.', 'error');
                 return;
             }
 
