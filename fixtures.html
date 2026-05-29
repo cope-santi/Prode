@@ -4,10 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Partidos - Mundial 2026</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
+    <style>
+        .predict-banner {
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .predict-banner.is-guest { background: rgba(255, 193, 7, 0.12); border: 1px solid rgba(255, 193, 7, 0.4); }
+        .predict-banner.is-user { background: rgba(118, 255, 3, 0.10); border: 1px solid rgba(118, 255, 3, 0.35); }
+        .predict-banner a { font-weight: 700; }
+        .pred-status { font-size: 0.8rem; margin: 6px 0 0; min-height: 1em; }
+        .pred-status.ok { color: #76ff03; }
+        .pred-status.saving { color: #bdbdbd; }
+        .pred-status.error { color: #ff6b6b; }
+        .pred-status.muted { color: #9e9e9e; }
+        .prediction-game-card .prediction-inputs { margin-top: 10px; }
+    </style>
 </head>
 <body class="bg-dark text-white">
 
@@ -18,10 +41,12 @@
             <div class="section-hero-content">
                 <span class="hero-badge">MUNDIAL 2026</span>
                 <h1 class="hero-title">Partidos del Mundial 2026</h1>
-                <p class="hero-subtitle">Filtrá por etapa, grupo o equipo para encontrar cada partido.</p>
+                <p class="hero-subtitle">Filtrá por etapa o grupo y cargá tus predicciones partido por partido.</p>
             </div>
         </section>
         <div id="sync-status-banner" class="text-center text-muted" style="margin-bottom: 16px; font-size: 0.85rem;"></div>
+
+        <div id="predict-banner" class="predict-banner" style="display: none;"></div>
 
         <div class="filter-bar" id="fixtures-filter-bar">
             <div class="filter-bar__row">
@@ -62,6 +87,10 @@
                         <button type="button" class="view-toggle__button group-toggle__button" data-group="F">F</button>
                         <button type="button" class="view-toggle__button group-toggle__button" data-group="G">G</button>
                         <button type="button" class="view-toggle__button group-toggle__button" data-group="H">H</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="I">I</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="J">J</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="K">K</button>
+                        <button type="button" class="view-toggle__button group-toggle__button" data-group="L">L</button>
                     </div>
                 </div>
             </div>
@@ -83,16 +112,18 @@
         <div id="knockout-view" style="display: none;"></div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script type="module">
         import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { firebaseConfig } from "./js/firebase-config.js";
+        import { ADMIN_UID } from "./js/app-config.js";
         import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
+        import {
+            getGameStatus, getStageIdFromGame, buildStageState, buildStageUnlocks,
+            getLockMessage, hasKickedOff, resolveDisplayName
+        } from "./js/predictions.js";
 
         mountNavbar({ activeKey: "matches" });
 
@@ -100,12 +131,17 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3';
-
         // State
         let allGames = [];
         let allTeams = {};
         let viewMode = 'list';
+        let selectedGroup = 'ALL';
+        let stageUnlocks = {};
+        let currentUserId = null;
+        let currentDisplayName = '';
+        let userPredictionsByGame = new Map();
+        const saveTimers = new Map();
+
         const KNOCKOUT_STAGES = ['R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
         const STAGE_LABELS = {
             GROUP: 'Fase de grupos',
@@ -119,7 +155,6 @@
         const statusLabelMap = {
             finished: 'Finalizado',
             live: 'En vivo',
-            in_play: 'En vivo',
             upcoming: 'Próximo'
         };
 
@@ -133,23 +168,66 @@
         const upcomingToggle = document.getElementById('upcoming-toggle');
         const viewToggleRow = document.getElementById('view-toggle-row');
         const viewToggleButtons = document.querySelectorAll('.view-toggle__button[data-view]');
-        let selectedGroup = 'ALL';
+        const predictBanner = document.getElementById('predict-banner');
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = String(value ?? '');
+            return div.innerHTML;
+        }
 
         loadSyncStatus();
 
         function updateNavbarForUser(user) {
             const isAdmin = user && user.uid === ADMIN_UID;
-            mountNavbar({
-                activeKey: 'matches',
-                showAdmin: isAdmin
-            });
+            mountNavbar({ activeKey: 'matches', showAdmin: isAdmin });
         }
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             updateNavbarForUser(user);
+            currentUserId = user ? user.uid : null;
+            currentDisplayName = user ? resolveDisplayName(user) : '';
+            updatePredictBanner(user);
+            if (user) {
+                await loadUserPredictions();
+            } else {
+                userPredictionsByGame = new Map();
+            }
+            if (allGames.length > 0) {
+                displayFilteredGames();
+            }
         });
 
-        // Load teams first
+        function updatePredictBanner(user) {
+            if (!predictBanner) return;
+            predictBanner.style.display = 'flex';
+            if (user) {
+                predictBanner.className = 'predict-banner is-user';
+                predictBanner.innerHTML = `<span>Cargás como <strong>${escapeHtml(currentDisplayName)}</strong>. Completá los dos marcadores y se guarda solo.</span>`;
+            } else {
+                predictBanner.className = 'predict-banner is-guest';
+                predictBanner.innerHTML = `<span>Para cargar predicciones necesitás tu cuenta.</span><a href="index.html">Iniciar sesión</a>`;
+            }
+        }
+
+        async function loadUserPredictions() {
+            if (!currentUserId) return;
+            try {
+                const snapshot = await getDocs(query(
+                    collection(db, 'predictions'),
+                    where('userId', '==', currentUserId),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                ));
+                userPredictionsByGame = new Map();
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    if (data.gameId) userPredictionsByGame.set(data.gameId, data);
+                });
+            } catch (error) {
+                console.error("Error loading user predictions: ", error);
+            }
+        }
+
         async function loadTeams() {
             try {
                 const teamsSnapshot = await getDocs(collection(db, 'teams'));
@@ -163,27 +241,22 @@
             }
         }
 
-        // Load all games
         async function loadGames() {
             gameListDiv.innerHTML = '<p class="loading-message">Cargando partidos...</p>';
-
             try {
-                const gamesRef = collection(db, 'games');
-                const q = query(
-                    gamesRef,
+                const snapshot = await getDocs(query(
+                    collection(db, 'games'),
                     where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-                );
-                const snapshot = await getDocs(q);
+                ));
 
                 if (snapshot.empty) {
                     gameListDiv.innerHTML = '<p>No hay partidos.</p>';
                     return;
                 }
 
-                // Store all games
                 allGames = [];
                 snapshot.forEach(doc => {
-                    allGames.push(doc.data());
+                    allGames.push({ id: doc.id, ...doc.data() });
                 });
                 allGames.sort((a, b) => {
                     const timeA = a.KickOffTime ? new Date(a.KickOffTime).getTime() : 0;
@@ -191,9 +264,10 @@
                     return timeA - timeB;
                 });
 
+                stageUnlocks = buildStageUnlocks(buildStageState(allGames));
+
                 updateStageUI();
                 displayFilteredGames();
-
             } catch (error) {
                 console.error("Error loading games: ", error);
                 gameListDiv.innerHTML = '<p>Error al cargar partidos. Intenta nuevamente.</p>';
@@ -201,18 +275,14 @@
         }
 
         function updateGroupButtons() {
-            if (!groupButtons || groupButtons.length === 0) return;
             groupButtons.forEach(button => {
                 button.classList.toggle('active', button.dataset.group === selectedGroup);
             });
         }
 
         function updateStageUI() {
-            if (!stageSelect || !groupFilterField || !viewToggleRow) {
-                return;
-            }
-            const stageValue = stageSelect.value;
-            const isGroup = stageValue === 'GROUP';
+            if (!stageSelect || !groupFilterField || !viewToggleRow) return;
+            const isGroup = stageSelect.value === 'GROUP';
             groupFilterField.style.display = isGroup ? 'grid' : 'none';
             if (!isGroup) {
                 selectedGroup = 'ALL';
@@ -235,28 +305,17 @@
 
             return allGames.filter(game => {
                 const stage = String(game.Stage || game.stage || '').toUpperCase();
-                if (stageValue && stage !== stageValue) {
-                    return false;
-                }
+                if (stageValue && stage !== stageValue) return false;
                 if (stageValue === 'GROUP' && groupValue !== 'ALL') {
                     const group = String(game.Group || game.group || '').toUpperCase();
-                    if (group !== groupValue) {
-                        return false;
-                    }
+                    if (group !== groupValue) return false;
                 }
                 if (searchTerm) {
                     const home = String(game.HomeTeam || '').toLowerCase();
                     const away = String(game.AwayTeam || '').toLowerCase();
-                    if (!home.includes(searchTerm) && !away.includes(searchTerm)) {
-                        return false;
-                    }
+                    if (!home.includes(searchTerm) && !away.includes(searchTerm)) return false;
                 }
-                if (upcomingOnly) {
-                    const status = (game.Status || game.status || '').toLowerCase();
-                    if (status === 'finished') {
-                        return false;
-                    }
-                }
+                if (upcomingOnly && getGameStatus(game) === 'finished') return false;
                 return true;
             }).sort((a, b) => {
                 const timeA = a.KickOffTime ? new Date(a.KickOffTime).getTime() : 0;
@@ -265,29 +324,60 @@
             });
         }
 
+        function predictionBlockHtml(game) {
+            if (getGameStatus(game) !== 'upcoming') return '';
+            const stageId = getStageIdFromGame(game);
+            const isLocked = stageId && Object.prototype.hasOwnProperty.call(stageUnlocks, stageId)
+                ? !stageUnlocks[stageId] : false;
+
+            if (!currentUserId) {
+                return `<p class="lock-notice">Iniciá sesión para predecir este partido.</p>`;
+            }
+            if (isLocked) {
+                return `<p class="lock-notice">${escapeHtml(getLockMessage(stageId))}</p>`;
+            }
+            if (hasKickedOff(game)) {
+                return `<p class="lock-notice">Predicciones cerradas: el partido ya empezó.</p>`;
+            }
+
+            const pred = userPredictionsByGame.get(game.id);
+            const h = pred && pred.predictedHomeScore !== null && pred.predictedHomeScore !== undefined ? pred.predictedHomeScore : '';
+            const a = pred && pred.predictedAwayScore !== null && pred.predictedAwayScore !== undefined ? pred.predictedAwayScore : '';
+            return `
+                <div class="prediction-inputs" data-pred-game="${escapeHtml(game.id)}">
+                    <input type="number" min="0" inputmode="numeric" class="score-input" data-game-id="${escapeHtml(game.id)}" data-team="home" value="${h}" aria-label="Goles ${escapeHtml(game.HomeTeam)}">
+                    <span class="score-separator">-</span>
+                    <input type="number" min="0" inputmode="numeric" class="score-input" data-game-id="${escapeHtml(game.id)}" data-team="away" value="${a}" aria-label="Goles ${escapeHtml(game.AwayTeam)}">
+                </div>
+                <p class="pred-status ok" data-pred-status="${escapeHtml(game.id)}">${pred ? 'Guardado ✓' : ''}</p>
+            `;
+        }
+
         function createGameCard(game) {
-            const homeTeamData = allTeams[game.HomeTeam] || {};
-            const awayTeamData = allTeams[game.AwayTeam] || {};
-            const homeLogoUrl = homeTeamData.logoUrl || '';
-            const awayLogoUrl = awayTeamData.logoUrl || '';
+            const homeLogoUrl = (allTeams[game.HomeTeam] || {}).logoUrl || '';
+            const awayLogoUrl = (allTeams[game.AwayTeam] || {}).logoUrl || '';
 
-                const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
-                const statusClass = statusValue === 'in_play' ? 'live' : statusValue;
-                const statusLabel = statusLabelMap[statusValue] || statusValue;
-                let scoreDisplay = '';
-                if (statusValue === 'finished') {
-                    const homeScore = game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?';
-                    const awayScore = game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?';
-                    scoreDisplay = `<p><strong>Resultado:</strong> ${homeScore} - ${awayScore}</p>`;
-                }
+            const statusValue = getGameStatus(game);
+            const statusLabel = statusLabelMap[statusValue] || statusValue;
+            let scoreDisplay = '';
+            if (statusValue === 'finished') {
+                const homeScore = game.HomeScore !== null && game.HomeScore !== undefined ? game.HomeScore : '?';
+                const awayScore = game.AwayScore !== null && game.AwayScore !== undefined ? game.AwayScore : '?';
+                scoreDisplay = `<p><strong>Resultado:</strong> ${escapeHtml(homeScore)} - ${escapeHtml(awayScore)}</p>`;
+            }
 
-                let phaseLabel = resolveStageLabel(game);
-                if ((game.Stage || game.stage) === 'GROUP' && (game.Group || game.group)) {
-                    phaseLabel = `Grupo ${String(game.Group || game.group).toUpperCase()}`;
-                }
+            let phaseLabel = resolveStageLabel(game);
+            if ((game.Stage || game.stage) === 'GROUP' && (game.Group || game.group)) {
+                phaseLabel = `Grupo ${String(game.Group || game.group).toUpperCase()}`;
+            }
+
+            const predictionBlock = predictionBlockHtml(game);
 
             const gameCard = document.createElement('div');
             gameCard.classList.add('app-card', 'game-card');
+            if (predictionBlock.includes('prediction-inputs')) {
+                gameCard.classList.add('prediction-game-card');
+            }
 
             const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
             const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
@@ -297,19 +387,20 @@
             gameCard.innerHTML = `
                 <div class="teams-row">
                     <div class="team">
-                        ${homeLogoUrl ? `<img src="${homeLogoUrl}" alt="${game.HomeTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                        <p class="team-name">${game.HomeTeam}</p>
+                        ${homeLogoUrl ? `<img src="${escapeHtml(homeLogoUrl)}" alt="${escapeHtml(game.HomeTeam)} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                        <p class="team-name">${escapeHtml(game.HomeTeam)}</p>
                     </div>
                     <div class="vs-separator">vs</div>
                     <div class="team">
-                        ${awayLogoUrl ? `<img src="${awayLogoUrl}" alt="${game.AwayTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                        <p class="team-name">${game.AwayTeam}</p>
+                        ${awayLogoUrl ? `<img src="${escapeHtml(awayLogoUrl)}" alt="${escapeHtml(game.AwayTeam)} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                        <p class="team-name">${escapeHtml(game.AwayTeam)}</p>
                     </div>
                 </div>
-                <p><strong>Fase:</strong> ${phaseLabel}</p>
-                <p><strong>Inicio:</strong> ${kickoffLabel}</p>
-                <p><strong>Estado:</strong> <span class="status ${statusClass}">${statusLabel}</span></p>
+                <p><strong>Fase:</strong> ${escapeHtml(phaseLabel)}</p>
+                <p><strong>Inicio:</strong> ${escapeHtml(kickoffLabel)}</p>
+                <p><strong>Estado:</strong> <span class="status ${statusValue}">${escapeHtml(statusLabel)}</span></p>
                 ${scoreDisplay}
+                ${predictionBlock}
             `;
             return gameCard;
         }
@@ -334,10 +425,7 @@
             knockoutView.style.display = 'none';
             knockoutView.innerHTML = '';
             gameListDiv.innerHTML = '';
-
-            filteredGames.forEach(game => {
-                gameListDiv.appendChild(createGameCard(game));
-            });
+            filteredGames.forEach(game => gameListDiv.appendChild(createGameCard(game)));
         }
 
         function renderKnockoutView(filteredGames) {
@@ -346,10 +434,7 @@
             knockoutView.style.display = 'block';
 
             KNOCKOUT_STAGES.forEach(stageKey => {
-                const stageGames = filteredGames.filter(game => {
-                    const stage = String(game.Stage || game.stage || '').toUpperCase();
-                    return stage === stageKey;
-                });
+                const stageGames = filteredGames.filter(game => String(game.Stage || game.stage || '').toUpperCase() === stageKey);
                 if (stageGames.length === 0) return;
 
                 const section = document.createElement('div');
@@ -361,9 +446,7 @@
 
                 const list = document.createElement('div');
                 list.classList.add('game-list');
-                stageGames.forEach(game => {
-                    list.appendChild(createGameCard(game));
-                });
+                stageGames.forEach(game => list.appendChild(createGameCard(game)));
                 section.appendChild(list);
                 knockoutView.appendChild(section);
             });
@@ -377,6 +460,66 @@
             displayFilteredGames();
         }
 
+        // --- Auto-save predictions (per match) ---
+        function setStatus(gameId, text, kind) {
+            const el = document.querySelector(`[data-pred-status="${gameId}"]`);
+            if (!el) return;
+            el.textContent = text;
+            el.className = `pred-status ${kind || ''}`;
+        }
+
+        function handleScoreChange(event) {
+            const input = event.target.closest('.score-input');
+            if (!input) return;
+            const gameId = input.dataset.gameId;
+            if (!gameId) return;
+            if (saveTimers.has(gameId)) clearTimeout(saveTimers.get(gameId));
+            saveTimers.set(gameId, setTimeout(() => savePredictionForGame(gameId), 450));
+        }
+
+        async function savePredictionForGame(gameId) {
+            if (!currentUserId) return;
+            const container = document.querySelector(`[data-pred-game="${gameId}"]`);
+            if (!container) return;
+            const homeInput = container.querySelector('[data-team="home"]');
+            const awayInput = container.querySelector('[data-team="away"]');
+            const homeRaw = homeInput.value.trim();
+            const awayRaw = awayInput.value.trim();
+
+            if (homeRaw === '' || awayRaw === '') {
+                setStatus(gameId, 'Completá ambos marcadores para guardar.', 'muted');
+                return;
+            }
+            const home = Number(homeRaw);
+            const away = Number(awayRaw);
+            if (!Number.isInteger(home) || !Number.isInteger(away) || home < 0 || away < 0) {
+                setStatus(gameId, 'Marcador inválido.', 'error');
+                return;
+            }
+
+            setStatus(gameId, 'Guardando…', 'saving');
+            try {
+                const predictionData = {
+                    userId: currentUserId,
+                    playerName: currentDisplayName,
+                    gameId,
+                    predictedHomeScore: home,
+                    predictedAwayScore: away,
+                    tournamentId: TOURNAMENT_CONFIG.tournamentId,
+                    timestamp: new Date()
+                };
+                await setDoc(doc(db, 'predictions', `${currentUserId}_${gameId}`), predictionData, { merge: true });
+                userPredictionsByGame.set(gameId, predictionData);
+                setStatus(gameId, 'Guardado ✓', 'ok');
+            } catch (error) {
+                console.error("Error saving prediction: ", error);
+                setStatus(gameId, 'Error al guardar. Reintentá.', 'error');
+            }
+        }
+
+        gameListDiv.addEventListener('change', handleScoreChange);
+        knockoutView.addEventListener('change', handleScoreChange);
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await loadTeams();
@@ -388,21 +531,15 @@
                     displayFilteredGames();
                 });
             }
-            if (groupButtons && groupButtons.length > 0) {
-                groupButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        selectedGroup = button.dataset.group || 'ALL';
-                        updateGroupButtons();
-                        displayFilteredGames();
-                    });
+            groupButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    selectedGroup = button.dataset.group || 'ALL';
+                    updateGroupButtons();
+                    displayFilteredGames();
                 });
-            }
-            if (teamSearchInput) {
-                teamSearchInput.addEventListener('input', displayFilteredGames);
-            }
-            if (upcomingToggle) {
-                upcomingToggle.addEventListener('change', displayFilteredGames);
-            }
+            });
+            if (teamSearchInput) teamSearchInput.addEventListener('input', displayFilteredGames);
+            if (upcomingToggle) upcomingToggle.addEventListener('change', displayFilteredGames);
             viewToggleButtons.forEach(button => {
                 button.addEventListener('click', () => handleViewToggle(button.dataset.view));
             });
@@ -411,10 +548,8 @@
         async function loadSyncStatus() {
             const banner = document.getElementById('sync-status-banner');
             if (!banner) return;
-
             try {
-                const statusRef = doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId);
-                const statusSnap = await getDoc(statusRef);
+                const statusSnap = await getDoc(doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId));
                 const data = statusSnap.exists() ? statusSnap.data() : {};
                 const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
                 const lastText = lastSync

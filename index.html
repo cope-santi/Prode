@@ -95,28 +95,28 @@
     <section id="game-prediction-section" class="py-5">
         <div class="container">
             <div class="app-card prediction-section">
-                <h2>Carga tus predicciones</h2>
-                <p class="section-lede">Tres pasos y listo: inicia sesión, completa marcadores y envía.</p>
+                <h2>Tu prode del Mundial</h2>
+                <p class="section-lede">Tres pasos y listo: iniciá sesión, andá a Partidos y cargá por grupo.</p>
                 <div class="quick-steps">
                     <div class="quick-step">
                         <span class="quick-step-number">1</span>
                         <div class="quick-step-text">
-                            <span class="quick-step-title">Inicia sesión</span>
+                            <span class="quick-step-title">Iniciá sesión</span>
                             <span class="quick-step-note">Con tu correo</span>
                         </div>
                     </div>
                     <div class="quick-step">
                         <span class="quick-step-number">2</span>
                         <div class="quick-step-text">
-                            <span class="quick-step-title">Completa marcadores</span>
-                            <span class="quick-step-note">Partido por partido</span>
+                            <span class="quick-step-title">Andá a Partidos</span>
+                            <span class="quick-step-note">Filtrá por grupo o fase</span>
                         </div>
                     </div>
                     <div class="quick-step">
                         <span class="quick-step-number">3</span>
                         <div class="quick-step-text">
-                            <span class="quick-step-title">Envía todo</span>
-                            <span class="quick-step-note">Guarda tus predicciones</span>
+                            <span class="quick-step-title">Cargá los marcadores</span>
+                            <span class="quick-step-note">Se guarda solo</span>
                         </div>
                     </div>
                 </div>
@@ -153,11 +153,10 @@
                     <input type="hidden" id="playerName">
                 </div>
 
-                <div id="prediction-form-games" class="game-list">
-                    Cargando partidos...
+                <div id="predict-cta" style="display: none; text-align: center; margin-top: 8px;">
+                    <a href="fixtures.html" class="btn btn-primary-custom btn-lg">Cargar mis predicciones</a>
+                    <p class="section-lede" style="margin-top: 10px;">Vas a la pestaña <strong>Partidos</strong>: elegí grupo o fase y completá cada marcador (se guarda solo).</p>
                 </div>
-
-                <button id="submitPredictions" class="btn btn-primary-custom" disabled>Enviar predicciones</button>
                 <p id="message" class="status-message"></p>
             </div>
 
@@ -379,6 +378,7 @@
         const userNameDisplay = document.getElementById('userNameDisplay');
         const userEmailDisplay = document.getElementById('userEmailDisplay');
         const adminNavLink = document.getElementById('adminNavLink');
+        const predictCta = document.getElementById('predict-cta');
 
         // --- Functions to toggle UI state ---
         function setPredictionFormEnabled(enabled) {
@@ -433,20 +433,16 @@
                 userEmailDisplay.textContent = user.email;
                 signOutButton.style.display = 'inline-block';
 
-                // Enable prediction form; the name comes from the account profile
-                setPredictionFormEnabled(true);
+                // The name comes from the account profile
                 playerNameInput.value = displayName;
                 if (playerNameDisplay) playerNameDisplay.textContent = displayName;
                 if (playerNameRow) playerNameRow.style.display = 'block';
-                setPredictionMessage('');
+                if (predictCta) predictCta.style.display = 'block';
                 authMessageDiv.textContent = ''; // Clear auth message
-
-                //console.log("User signed in:", user.email, "UID:", user.uid);
 
                 // Show My Predictions section and load predictions
                 myPredictionsSection.style.display = 'block';
-                loadMyPredictions(); // Call the new function to load predictions for this user
-                loadUserPredictionsForForm();
+                loadMyPredictions(); // Load this user's predictions summary
 
                 //console.log("User signed in:", user.email, "UID:", user.uid);
 
@@ -464,14 +460,10 @@
                 userStatusDisplayDiv.style.display = 'none'; // Hide user status
                 signOutButton.style.display = 'none';
 
-                // Disable prediction form
-                setPredictionFormEnabled(false);
                 playerNameInput.value = ''; // Clear player name
                 if (playerNameRow) playerNameRow.style.display = 'none';
-                setPredictionMessage('Inicia sesión para enviar predicciones.', 'info');
+                if (predictCta) predictCta.style.display = 'none';
                 authMessageDiv.textContent = ''; // Clear auth message
-
-                //console.log("User signed out.");
 
                 // Hide My Predictions section and clear its content
                 myPredictionsSection.style.display = 'none';
@@ -479,8 +471,6 @@
                 if (myPredictionsFilterBar) {
                     myPredictionsFilterBar.style.display = 'none';
                 }
-                userPredictionsByGame = new Map();
-                loadGames();
 
                 if (adminNavLink) {
                     adminNavLink.style.display = 'none';
@@ -938,11 +928,14 @@
                     return timeB - timeA;
                 });
 
-                gamesMapForPredictions = new Map(gamesMapById);
-                if (gamesMapForPredictions.size === 0) {
-                    await loadGames();
-                    gamesMapForPredictions = new Map(gamesMapById);
-                }
+                gamesMapForPredictions = new Map();
+                const gamesSnapshot = await getDocs(query(
+                    collection(db, 'games'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                ));
+                gamesSnapshot.forEach(gameDoc => {
+                    gamesMapForPredictions.set(gameDoc.id, gameDoc.data());
+                });
 
                 if (myPredictionsFilterBar) {
                     myPredictionsFilterBar.style.display = 'block';
@@ -1090,10 +1083,6 @@
                     }
                 });
                 console.log("Teams loaded:", allTeams.length, "teams");
-
-                // Then load and display games
-                console.log("Initializing app content: Loading games...");
-                await loadGames();
                 console.log("App content initialization complete.");
 
             } catch (error) {
