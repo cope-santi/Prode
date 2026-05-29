@@ -23,6 +23,38 @@ body {
     margin: 0;
 }
 
+.app-shell-active,
+.app-shell-active body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.app-shell-hidden {
+    display: none !important;
+}
+
+.app-shell {
+    position: fixed;
+    top: var(--nav-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    background: #0b1220;
+}
+
+.app-shell__frame {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+    background: #0b1220;
+}
+
+.is-embedded-page body {
+    margin: 0;
+}
+
 .topbar {
     position: sticky;
     top: 0;
@@ -86,6 +118,10 @@ body {
 
 .topbar__spacer {
     flex: 1;
+}
+
+.topbar__brand.active {
+    color: #f6c453;
 }
 
 .topbar-music {
@@ -272,6 +308,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    :root {
+        --nav-h: 104px;
+    }
+
     .topbar__inner {
         flex-wrap: wrap;
         justify-content: space-between;

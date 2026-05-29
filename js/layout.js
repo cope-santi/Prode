@@ -8,6 +8,7 @@ const MUSIC_STORAGE_KEY = 'prodeMusicState';
 let youtubeApiPromise = null;
 let musicPlayer = null;
 let musicTimer = null;
+let shellFrame = null;
 
 export function mountNavbar(options = {}) {
     const {
@@ -17,18 +18,25 @@ export function mountNavbar(options = {}) {
     const container = document.getElementById('app-navbar');
     if (!container) return;
 
+    if (isEmbeddedPage()) {
+        container.hidden = true;
+        document.documentElement.classList.add('is-embedded-page');
+        mountEmbeddedNavigation();
+        return;
+    }
+
     const linksHtml = NAV_ITEMS.map(item => {
         const isActive = item.key === activeKey ? 'active' : '';
-        return `<a class="topbar__link ${isActive}" href="${item.href}">${item.label}</a>`;
+        return `<a class="topbar__link ${isActive}" href="${item.href}" data-shell-link>${item.label}</a>`;
     }).join('');
     const adminLinkHtml = showAdmin
-        ? `<a class="topbar__link ${activeKey === 'admin' ? 'active' : ''}" href="admin.html">Admin</a>`
+        ? `<a class="topbar__link ${activeKey === 'admin' ? 'active' : ''}" href="admin.html" data-shell-link>Admin</a>`
         : '';
 
     container.innerHTML = `
         <nav class="topbar">
             <div class="topbar__inner">
-                <a class="topbar__brand" href="index.html">Prode</a>
+                <a class="topbar__brand" href="index.html" data-shell-link>Prode</a>
                 <div class="topbar__links">
                     ${linksHtml}
                     ${adminLinkHtml}
@@ -46,6 +54,156 @@ export function mountNavbar(options = {}) {
     `;
 
     mountMusicPlayer(container);
+    mountPersistentShell(container);
+}
+
+function isEmbeddedPage() {
+    return new URLSearchParams(window.location.search).get('embedded') === '1';
+}
+
+function mountPersistentShell(navbarContainer) {
+    window.history.replaceState({ shellPath: normalizePath(window.location.pathname) }, '', window.location.href);
+
+    document.addEventListener('click', event => {
+        const link = event.target.closest('a[href]');
+        if (!link || !shouldOpenInShell(link)) return;
+
+        event.preventDefault();
+        openInShell(link.getAttribute('href'), { pushState: true });
+    });
+
+    window.addEventListener('popstate', event => {
+        if (event.state && event.state.shellPath) {
+            openInShell(event.state.shellPath, { pushState: false });
+        }
+    });
+
+    window.addEventListener('message', event => {
+        if (event.origin !== window.location.origin) return;
+        if (!event.data || event.data.type !== 'prode-shell-path') return;
+        setActiveNav(event.data.path);
+        window.history.replaceState({ shellPath: event.data.path }, '', event.data.publicUrl || event.data.path);
+    });
+
+    navbarContainer.addEventListener('click', event => {
+        const link = event.target.closest('[data-shell-link]');
+        if (!link) return;
+        setActiveNav(link.getAttribute('href'));
+    });
+}
+
+function mountEmbeddedNavigation() {
+    postEmbeddedPath();
+    document.addEventListener('click', event => {
+        const link = event.target.closest('a[href]');
+        if (!link || !shouldOpenInShell(link)) return;
+
+        event.preventDefault();
+        const url = new URL(link.getAttribute('href'), window.location.href);
+        window.location.href = buildEmbeddedUrl(normalizePath(url.pathname), url.search, url.hash);
+    });
+}
+
+function postEmbeddedPath() {
+    if (window.parent === window) return;
+    window.parent.postMessage({
+        type: 'prode-shell-path',
+        path: normalizePath(window.location.pathname),
+        publicUrl: buildPublicUrl(window.location.href)
+    }, window.location.origin);
+}
+
+function shouldOpenInShell(link) {
+    if (link.target && link.target !== '_self') return false;
+    if (link.hasAttribute('download')) return false;
+
+    const rawHref = link.getAttribute('href') || '';
+    if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) {
+        return false;
+    }
+
+    const url = new URL(rawHref, window.location.href);
+    if (url.origin !== window.location.origin) return false;
+    if (!url.pathname.endsWith('.html') && url.pathname !== '/' && url.pathname !== '') return false;
+
+    const currentPath = normalizePath(window.location.pathname);
+    const nextPath = normalizePath(url.pathname);
+    if (currentPath === nextPath && url.hash) return false;
+
+    return true;
+}
+
+function openInShell(rawHref, options = {}) {
+    const { pushState = true } = options;
+    const url = new URL(rawHref, window.location.href);
+    const publicPath = normalizePath(url.pathname);
+    const frameUrl = buildEmbeddedUrl(publicPath, url.search, url.hash);
+    const publicUrl = buildPublicUrl(url.href);
+    const frame = ensureShellFrame();
+
+    frame.src = frameUrl;
+    setActiveNav(publicPath);
+
+    if (pushState) {
+        window.history.pushState({ shellPath: publicPath }, '', publicUrl);
+    }
+}
+
+function ensureShellFrame() {
+    if (shellFrame) return shellFrame;
+
+    const shell = document.createElement('main');
+    shell.className = 'app-shell';
+    shell.setAttribute('aria-label', 'Contenido de la aplicacion');
+
+    shellFrame = document.createElement('iframe');
+    shellFrame.className = 'app-shell__frame';
+    shellFrame.title = 'Contenido del Prode';
+    shellFrame.setAttribute('data-shell-frame', 'true');
+    shell.appendChild(shellFrame);
+    document.body.appendChild(shell);
+
+    Array.from(document.body.children).forEach(child => {
+        if (child.id === 'app-navbar' || child === shell) return;
+        child.classList.add('app-shell-hidden');
+        child.setAttribute('aria-hidden', 'true');
+    });
+
+    document.documentElement.classList.add('app-shell-active');
+    document.body.classList.add('app-shell-active');
+    return shellFrame;
+}
+
+function buildEmbeddedUrl(pathname, search = '', hash = '') {
+    const url = new URL(pathname, window.location.origin);
+    if (search) {
+        const params = new URLSearchParams(search);
+        params.forEach((value, key) => url.searchParams.set(key, value));
+    }
+    url.searchParams.set('embedded', '1');
+    url.searchParams.set('v', 'persistent-shell-1');
+    url.hash = hash || '';
+    return url.pathname + url.search + url.hash;
+}
+
+function buildPublicUrl(rawHref) {
+    const url = new URL(rawHref, window.location.origin);
+    url.searchParams.delete('embedded');
+    url.searchParams.delete('v');
+    return url.pathname + url.search + url.hash;
+}
+
+function normalizePath(pathname) {
+    const path = pathname && pathname !== '/' ? pathname : '/index.html';
+    return path.startsWith('/') ? path : `/${path}`;
+}
+
+function setActiveNav(rawHref) {
+    const targetPath = normalizePath(new URL(rawHref || '/index.html', window.location.origin).pathname);
+    document.querySelectorAll('.topbar__link, .topbar__brand').forEach(link => {
+        const linkPath = normalizePath(new URL(link.getAttribute('href') || '/index.html', window.location.origin).pathname);
+        link.classList.toggle('active', linkPath === targetPath);
+    });
 }
 
 function mountMusicPlayer(container) {
