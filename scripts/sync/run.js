@@ -50,7 +50,8 @@ async function run() {
   const config = loadConfig();
   const db = initFirebase(config);
 
-  const lockAcquired = await acquireLock(db, config);
+  const lockId = `${process.env.GITHUB_RUN_ID || "local"}-${process.pid}-${Date.now()}`;
+  const lockAcquired = await acquireLock(db, config, lockId);
   if (!lockAcquired) {
     console.log("Sync already running. Exiting.");
     return;
@@ -172,7 +173,7 @@ async function run() {
     });
     throw error;
   } finally {
-    await releaseLock(db, config.tournamentId);
+    await releaseLock(db, config.tournamentId, lockId);
   }
 }
 
@@ -482,11 +483,11 @@ function buildPayload(mapped, config, now, isCreate) {
     externalProvider: "thesportsdb",
     externalMatchId: mapped.externalMatchId,
     utcDate: mapped.utcDate,
-    status: mapped.status === "FINISHED" ? "FINISHED" : "SCHEDULED",
+    status: mapped.status,
+    providerStatus: mapped.providerStatus,
     HomeTeam: mapped.HomeTeam,
     AwayTeam: mapped.AwayTeam,
     KickOffTime: mapped.utcDate,
-    Status: mapped.status === "FINISHED" ? "finished" : "upcoming",
     Stage: mapped.Stage,
     Group: mapped.Group,
     Matchday: mapped.Matchday,
@@ -497,7 +498,7 @@ function buildPayload(mapped, config, now, isCreate) {
     syncError: null
   };
 
-  if (mapped.status === "FINISHED") {
+  if (mapped.status === "finished") {
     payload.score = mapped.score;
     payload.HomeScore = mapped.HomeScore;
     payload.AwayScore = mapped.AwayScore;
@@ -508,6 +509,8 @@ function buildPayload(mapped, config, now, isCreate) {
 
   if (isCreate) {
     payload.isManuallyEdited = false;
+  } else {
+    payload.Status = admin.firestore.FieldValue.delete();
   }
 
   return payload;
@@ -515,20 +518,23 @@ function buildPayload(mapped, config, now, isCreate) {
 
 function sanitizePayload(payload, existingData) {
   const sanitized = { ...payload };
-  const existingStatus = String(existingData.status || "");
+  const existingStatus = String(existingData.status || existingData.Status || "").toLowerCase();
+  const hasLegacyStatus = Object.prototype.hasOwnProperty.call(existingData, "Status");
 
-  if (existingStatus === "FINISHED" && sanitized.status !== "FINISHED") {
-    sanitized.status = existingData.status;
-    sanitized.Status = existingData.Status;
+  if (existingStatus === "finished" && sanitized.Status !== "finished") {
+    sanitized.status = "finished";
+    sanitized.providerStatus = existingData.providerStatus || "FINISHED";
+    sanitized.Status = admin.firestore.FieldValue.delete();
+  }
+
+  if (sanitized.status !== "finished") {
     delete sanitized.score;
     delete sanitized.HomeScore;
     delete sanitized.AwayScore;
   }
 
-  if (sanitized.status !== "FINISHED") {
-    delete sanitized.score;
-    delete sanitized.HomeScore;
-    delete sanitized.AwayScore;
+  if (!hasLegacyStatus) {
+    delete sanitized.Status;
   }
 
   return sanitized;
@@ -542,6 +548,7 @@ function hasChanges(payload, existingData) {
     "utcDate",
     "Status",
     "status",
+    "providerStatus",
     "HomeScore",
     "AwayScore",
     "Stage",
@@ -585,7 +592,7 @@ function normalizeTeam(name) {
   return String(name || "").trim().toLowerCase();
 }
 
-async function acquireLock(db, config) {
+async function acquireLock(db, config, lockId) {
   const lockRef = db.collection("sync_locks").doc(config.tournamentId);
   const now = Date.now();
   const ttlMs = Math.max(1, config.lockMinutes) * 60 * 1000;
@@ -605,7 +612,7 @@ async function acquireLock(db, config) {
       {
         lockedAt: admin.firestore.Timestamp.fromMillis(now),
         expiresAt,
-        lockedBy: "github-actions"
+        lockedBy: lockId
       },
       { merge: true }
     );
@@ -615,16 +622,23 @@ async function acquireLock(db, config) {
   return acquired;
 }
 
-async function releaseLock(db, tournamentId) {
+async function releaseLock(db, tournamentId, lockId) {
   const lockRef = db.collection("sync_locks").doc(tournamentId);
-  await lockRef.set(
-    {
-      lockedAt: null,
-      expiresAt: null,
-      lockedBy: null
-    },
-    { merge: true }
-  );
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(lockRef);
+    if (!snap.exists || snap.data().lockedBy !== lockId) {
+      return;
+    }
+    tx.set(
+      lockRef,
+      {
+        lockedAt: null,
+        expiresAt: null,
+        lockedBy: null
+      },
+      { merge: true }
+    );
+  });
 }
 
 async function updateSyncStatus(db, tournamentId, payload) {

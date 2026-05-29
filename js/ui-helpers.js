@@ -11,9 +11,29 @@ import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./tournam
 let cachedTournamentGames = null;
 let cachedGamesMap = null;
 let cachedAllPredictions = null;
+let cachedPlayerStats = null;
+let cachedGamesAt = 0;
+let cachedPredictionsAt = 0;
+const CACHE_TTL_MS = 60 * 1000;
+
+export function clearUiDataCache() {
+    cachedTournamentGames = null;
+    cachedGamesMap = null;
+    cachedAllPredictions = null;
+    cachedPlayerStats = null;
+    cachedGamesAt = 0;
+    cachedPredictionsAt = 0;
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('focus', clearUiDataCache);
+    window.addEventListener('adminGameAdded', clearUiDataCache);
+    window.addEventListener('adminGameUpdated', clearUiDataCache);
+    window.addEventListener('predictionsUpdated', clearUiDataCache);
+}
 
 async function loadTournamentGames(db) {
-    if (cachedTournamentGames && cachedGamesMap) {
+    if (cachedTournamentGames && cachedGamesMap && Date.now() - cachedGamesAt < CACHE_TTL_MS) {
         return { gamesArray: cachedTournamentGames, gamesMap: cachedGamesMap };
     }
 
@@ -43,12 +63,13 @@ async function loadTournamentGames(db) {
 
     cachedTournamentGames = gamesArray;
     cachedGamesMap = gamesMap;
+    cachedGamesAt = Date.now();
 
     return { gamesArray, gamesMap };
 }
 
 async function loadAllPredictions(db) {
-    if (cachedAllPredictions) {
+    if (cachedAllPredictions && Date.now() - cachedPredictionsAt < CACHE_TTL_MS) {
         return cachedAllPredictions;
     }
 
@@ -63,6 +84,8 @@ async function loadAllPredictions(db) {
     });
 
     cachedAllPredictions = allPredictions;
+    cachedPlayerStats = null;
+    cachedPredictionsAt = Date.now();
     return allPredictions;
 }
 
@@ -169,7 +192,8 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
         });
 
         // Use centralized calculatePlayerStats to get proper fechas won count
-        const allPlayerStats = calculatePlayerStats(gamesArray, allPredictions);
+        const allPlayerStats = cachedPlayerStats || calculatePlayerStats(gamesArray, allPredictions);
+        cachedPlayerStats = allPlayerStats;
         const playerStats = getPlayerStats(allPlayerStats, userId) || {
             totalPoints: 0,
             perfectScoresCount: 0,
@@ -335,21 +359,21 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
 
         const totalCell = document.createElement('td');
         const totalBadge = document.createElement('span');
-        totalBadge.className = 'badge badge-light badge-pill';
+        totalBadge.className = 'badge bg-light text-dark rounded-pill';
         totalBadge.textContent = String(stats.totalPoints);
         totalCell.appendChild(totalBadge);
 
         const phasesCell = document.createElement('td');
         phasesCell.className = 'text-center';
         const phasesBadge = document.createElement('span');
-        phasesBadge.className = 'badge badge-info';
+        phasesBadge.className = 'badge bg-info text-dark';
         phasesBadge.textContent = String(stats.fechasWonCount);
         phasesCell.appendChild(phasesBadge);
 
         const perfectCell = document.createElement('td');
         perfectCell.className = 'text-center';
         const perfectBadge = document.createElement('span');
-        perfectBadge.className = 'badge badge-warning';
+        perfectBadge.className = 'badge bg-warning text-dark';
         perfectBadge.textContent = String(stats.perfectScoresCount);
         perfectCell.appendChild(perfectBadge);
 

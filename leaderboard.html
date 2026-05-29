@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tabla - Mundial 2026</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6" crossorigin="anonymous">
     <link rel="stylesheet" href="css/styles_final.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="icon" href="./css/icon/favicon-ball.ico" />
@@ -48,17 +48,16 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
 
     <script type="module">
         import { mountNavbar } from "./js/layout.js";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-        import { calculatePoints, calculatePlayerStats } from "./js/calculations.js";
+        import { calculatePoints, calculatePlayerStats, sortPlayersByStats } from "./js/calculations.js";
         import { firebaseConfig } from "./js/firebase-config.js";
+        import { ADMIN_UID } from "./js/app-config.js";
         import { renderLeaderboardTable, createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
         import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
 
@@ -68,8 +67,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3';
-
         // UI Elements
         const allGamesResultsContainer = document.getElementById('all-games-results-container');
         const overallLeaderboardContainer = document.getElementById('overall-leaderboard-container');
@@ -111,6 +108,16 @@
         onAuthStateChanged(auth, (user) => {
             updateNavbarForUser(user);
         });
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = String(value ?? '');
+            return div.innerHTML;
+        }
+
+        function getGameStatus(game) {
+            return String(game.status || game.Status || 'upcoming').toLowerCase();
+        }
 
         // --- Load All Results Function ---
         async function loadAllResults() {
@@ -157,7 +164,7 @@
                 userDisplayNamesGlobal = userNames;
 
                 // 5. Render the overall leaderboard using ui-helpers
-                renderLeaderboardContainer(playerStats, userNames);
+                renderLeaderboardContainer(playerStats, userNames, predictions);
 
                 // 6. Render the individual game results
                 allGamesResultsContainer.innerHTML = '';
@@ -182,7 +189,7 @@
                     // Get predictions for this game
                     const gamePredictions = predictions.filter(p => p.gameId === game.id);
 
-                    const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+                    const statusValue = getGameStatus(game);
                     const statusLabel = statusLabelMap[statusValue] || statusValue;
                     const statusClass = statusClassMap[statusValue] || 'upcoming';
                     const hasFinalScore = game.HomeScore !== null && game.AwayScore !== null;
@@ -218,7 +225,7 @@
 
                                 return `
                                     <div class="prediction-entry">
-                                        <span><strong>${prediction.playerName || 'Anónimo'}</strong> predijo: ${predictedHome} - ${predictedAway}</span>
+                                        <span><strong>${escapeHtml(prediction.playerName || 'Anónimo')}</strong> predijo: ${escapeHtml(predictedHome)} - ${escapeHtml(predictedAway)}</span>
                                         <span class="score ${pointsClass}">${pointsDisplay}</span>
                                     </div>
                                 `;
@@ -234,7 +241,7 @@
 
                     gameCard.innerHTML = `
                         <h3 class="game-header">
-                            ${game.HomeTeam} vs ${game.AwayTeam}
+                            ${escapeHtml(game.HomeTeam)} vs ${escapeHtml(game.AwayTeam)}
                             <span class="game-status ${statusClass}">${statusLabel}</span>
                         </h3>
                         <p class="game-info">${phaseLabel} - ${kickoffLabel}</p>
@@ -255,23 +262,11 @@
         }
 
         // --- Render Overall Leaderboard ---
-        function renderLeaderboardContainer(playerStats, userNames) {
+        function renderLeaderboardContainer(playerStats, userNames, predictions) {
             leaderboardList.innerHTML = '';
             overallLeaderboardContainer.style.display = 'block';
 
-            // Convert playerStats array to entries and sort by stats
-            const sortedPlayers = Object.entries(playerStats).sort(([idA, statsA], [idB, statsB]) => {
-                if (statsB.totalPoints !== statsA.totalPoints) {
-                    return statsB.totalPoints - statsA.totalPoints;
-                }
-                if (statsB.fechasWonCount !== statsA.fechasWonCount) {
-                    return statsB.fechasWonCount - statsA.fechasWonCount;
-                }
-                if (statsB.perfectScoresCount !== statsA.perfectScoresCount) {
-                    return statsB.perfectScoresCount - statsA.perfectScoresCount;
-                }
-                return (userNames[idA] || '').localeCompare(userNames[idB] || '');
-            });
+            const sortedPlayers = sortPlayersByStats(playerStats, predictions);
 
             if (sortedPlayers.length === 0) {
                 leaderboardList.innerHTML = '<p class="text-center text-muted">No total scores to display yet.</p>';

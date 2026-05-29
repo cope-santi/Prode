@@ -10,9 +10,9 @@ const STAGE_MAP = {
 };
 
 function mapEventToGame(event) {
-  const status = mapSportsDbStatus(event.strStatus);
-  const legacyStatus = status === "FINISHED" ? "finished" : "upcoming";
-  const score = status === "FINISHED" ? buildScore(event) : null;
+  const providerStatus = mapSportsDbStatus(event.strStatus);
+  const status = providerStatus === "FINISHED" ? "finished" : "upcoming";
+  const score = status === "finished" ? buildScore(event) : null;
   const roundText = event.strRound || event.strEvent;
   let stage = mapRoundToStage(roundText, event.intRound);
   const rawGroup = extractGroup(event.strGroup || roundText);
@@ -29,11 +29,11 @@ function mapEventToGame(event) {
     externalMatchId: event.idEvent ? String(event.idEvent) : "",
     utcDate,
     status,
+    providerStatus,
     score,
     HomeTeam: event.strHomeTeam || "",
     AwayTeam: event.strAwayTeam || "",
     KickOffTime: utcDate,
-    Status: legacyStatus,
     HomeScore: score ? score.home : null,
     AwayScore: score ? score.away : null,
     Stage: stage,
@@ -96,8 +96,8 @@ function mapRoundToStage(text, roundNumber) {
 function extractGroup(value) {
   const text = String(value || "");
   const match = text.match(/group\s*([a-z])/i);
-  if (match) return match[1].toUpperCase();
-  if (text.length === 1) return text.toUpperCase();
+  if (match) return normalizeGroup(match[1]);
+  if (text.length === 1) return normalizeGroup(text);
   return null;
 }
 
@@ -107,13 +107,18 @@ function parseMatchday(stage, intRound, roundText) {
   if (!Number.isNaN(roundNum) && roundNum >= 1 && roundNum <= 3) {
     return roundNum;
   }
-  const match = String(roundText || "").match(/(?:matchday|round)\s*(\d+)/i) || String(roundText || "").match(/(\d+)/);
+  const match = String(roundText || "").match(/\b(?:matchday|round)\s*(?:day\s*)?([1-3])\b/i);
   if (match) {
     const parsed = parseInt(match[1], 10);
     if (Number.isNaN(parsed)) return null;
     return parsed >= 1 && parsed <= 3 ? parsed : null;
   }
   return null;
+}
+
+function normalizeGroup(value) {
+  const group = String(value || "").trim().toUpperCase();
+  return /^[A-L]$/.test(group) ? group : null;
 }
 
 function buildStageKey({ stage, group, matchday }) {

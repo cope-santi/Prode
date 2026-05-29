@@ -12,6 +12,7 @@
  */
 
 import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage } from './tournament-config.js';
+import { deleteField } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // Admin DOM References
 let adminGameFormSection;
@@ -40,6 +41,10 @@ let updateDocFunction;
 let docFunction;
 let selectedGameId = null;
 let gamesById = new Map();
+
+function getCanonicalStatus(game) {
+    return game && (game.status || game.Status) ? String(game.status || game.Status).toLowerCase() : 'upcoming';
+}
 
 /**
  * Initialize admin panel by getting all DOM references
@@ -131,7 +136,7 @@ export async function handleAdminGameAdd() {
             adminStatusSelect.value = status;
         }
     }
-    const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
+    const providerStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
     // Basic validation
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
@@ -183,8 +188,8 @@ export async function handleAdminGameAdd() {
             AwayTeam: awayTeam,
             KickOffTime: kickOffTime.toISOString(),
             utcDate: kickOffTime.toISOString(),
-            Status: status,
-            status: externalStatus,
+            status,
+            providerStatus,
             Stage: stage,
             Group: group,
             Matchday: matchday,
@@ -288,7 +293,7 @@ export function loadGameIntoForm(game) {
         const isoString = new Date(kickoff.getTime() - (kickoff.getTimezoneOffset() * 60000)).toISOString().slice(0, -8);
         adminKickOffTimeInput.value = isoString;
     }
-    if (adminStatusSelect) adminStatusSelect.value = game.Status || 'upcoming';
+    if (adminStatusSelect) adminStatusSelect.value = getCanonicalStatus(game);
     if (adminHomeScoreInput) adminHomeScoreInput.value = game.HomeScore ?? '';
     if (adminAwayScoreInput) adminAwayScoreInput.value = game.AwayScore ?? '';
     if (adminManualOverrideInput) adminManualOverrideInput.checked = !!game.isManuallyEdited;
@@ -321,7 +326,7 @@ export async function handleAdminGameUpdate() {
             adminStatusSelect.value = status;
         }
     }
-    const externalStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
+    const providerStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
 
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
@@ -372,8 +377,9 @@ export async function handleAdminGameUpdate() {
             AwayTeam: awayTeam,
             KickOffTime: kickOffTime.toISOString(),
             utcDate: kickOffTime.toISOString(),
-            Status: status,
-            status: externalStatus,
+            status,
+            Status: deleteField(),
+            providerStatus,
             Stage: stage,
             Group: group,
             Matchday: matchday,

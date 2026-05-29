@@ -50,11 +50,11 @@
                     </div>
                     <div class="hero-brand-text">
                         <span class="hero-badge">MUNDIAL 2026</span>
-                        <span class="hero-tagline">USA / Mexico / Canada</span>
+                        <span class="hero-tagline">USA / México / Canadá</span>
                     </div>
                 </div>
                 <h1>Prode Mundial 2026</h1>
-                <p class="hero-subtitle">Predici resultados, suma puntos y vivi cada fase del Mundial.</p>
+                <p class="hero-subtitle">Predecí resultados, sumá puntos y viví cada fase del Mundial.</p>
                 <div class="hero-actions">
                     <a class="btn btn-primary-custom" href="#game-prediction-section">Empezar</a>
                     <a class="btn btn-secondary-custom" href="leaderboard.html">Ver tabla</a>
@@ -72,7 +72,7 @@
             </div>
             <div class="hero-panel">
                 <h2 class="hero-panel-title">Vivi el Mundial 2026</h2>
-                <p>Arma tu prode, segui la tabla y senti cada partido como final.</p>
+                <p>Armá tu prode, seguí la tabla y sentí cada partido como final.</p>
                 <div class="hero-stats">
                     <div class="hero-stat">
                         <span class="stat-value">48</span>
@@ -87,7 +87,7 @@
                         <span class="stat-label">Sedes</span>
                     </div>
                 </div>
-                <div class="hero-panel-note">Sedes 2026: USA, Mexico y Canada.</div>
+                <div class="hero-panel-note">Sedes 2026: USA, México y Canadá.</div>
             </div>
         </div>
     </header>
@@ -182,7 +182,7 @@
                                 <option value="ALL">Todos</option>
                                 <option value="finished">Finalizados</option>
                                 <option value="live">En vivo</option>
-                                <option value="upcoming">Proximos</option>
+                                <option value="upcoming">Próximos</option>
                             </select>
                         </div>
                     </div>
@@ -233,11 +233,12 @@
         import { mountNavbar } from "./js/layout.js";
         // Import the functions you need from the SDKs you want to use
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, getDoc, setDoc, deleteDoc, query, orderBy, limit, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDoc, setDoc, query, orderBy, where, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         // Import Authentication functions
-        import { getAuth, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
+        import { ADMIN_UID } from "./js/app-config.js";
         import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./js/tournament-config.js";
         
         mountNavbar({ activeKey: "home" });
@@ -260,9 +261,9 @@
 
         let gamesForPrediction = []; // To store games that are upcoming for prediction
         let currentUserId = null; // To store the authenticated user's ID
-        let currentUserEmail = null; // To store the authenticated user's email
         let allTeams = [];
         let teamLogoMap = new Map();
+        let gamesMapById = new Map();
         let stageUnlocks = {};
         let userPredictionsByGame = new Map();
 
@@ -294,7 +295,7 @@
                 const stageId = getStageIdFromGame(game);
                 if (!stageId || !state[stageId]) return;
                 state[stageId].hasGames = true;
-                const status = (game.Status || game.status || '').toLowerCase();
+                const status = getGameStatus(game);
                 if (status !== 'finished') {
                     state[stageId].allFinished = false;
                 }
@@ -328,6 +329,16 @@
             return `Bloqueado hasta que finalice ${label}.`;
         }
 
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = String(value ?? '');
+            return div.innerHTML;
+        }
+
+        function getGameStatus(game) {
+            return String(game.status || game.Status || 'upcoming').toLowerCase();
+        }
+
         // --- UI Element References ---
         const playerNameInput = document.getElementById('playerName');
         const submitPredictionsButton = document.getElementById('submitPredictions');
@@ -352,9 +363,6 @@
         const userNameDisplay = document.getElementById('userNameDisplay');
         const userEmailDisplay = document.getElementById('userEmailDisplay');
         const adminNavLink = document.getElementById('adminNavLink');
-
-        // --- Admin Configuration ---
-        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3'; // <--- REPLACE THIS WITH YOUR ACTUAL UID!
 
         // --- Functions to toggle UI state ---
         function setPredictionFormEnabled(enabled) {
@@ -401,8 +409,6 @@
             if (user) {
                 // User is signed in
                 currentUserId = user.uid;
-                currentUserEmail = user.email;
-
                 // Update UI for signed-in state
                 loginRegisterFormDiv.style.display = 'none'; // Hide login/register form
                 userStatusDisplayDiv.style.display = 'block'; // Show user status
@@ -434,8 +440,6 @@
             } else {
                 // User is signed out
                 currentUserId = null;
-                currentUserEmail = null;
-
                 // Update UI for signed-out state
                 loginRegisterFormDiv.style.display = 'block'; // Show login/register form
                 userStatusDisplayDiv.style.display = 'none'; // Hide user status
@@ -547,11 +551,14 @@
                 predictionFormGamesDiv.innerHTML = '';
                 gamesForPrediction = [];
                 const allGames = [];
+                gamesMapById = new Map();
 
                 snapshot.forEach(doc => {
                     const game = doc.data();
                     const gameId = doc.id;
-                    allGames.push({ id: gameId, ...game });
+                    const gameWithId = { id: gameId, ...game };
+                    allGames.push(gameWithId);
+                    gamesMapById.set(gameId, gameWithId);
                 });
 
                 const stageState = buildStageState(allGames);
@@ -563,39 +570,50 @@
                     const stageId = getStageIdFromGame(game);
                     const isLocked = stageId && stageUnlocks.hasOwnProperty(stageId) ? !stageUnlocks[stageId] : false;
                     const lockMessage = isLocked ? getLockMessage(stageId) : '';
-                    const statusValue = (game.Status || game.status || '').toLowerCase();
+                    const statusValue = getGameStatus(game);
                     const kickOffValue = game.KickOffTime?.toDate ? game.KickOffTime.toDate() : game.KickOffTime;
                     const kickOffMillis = kickOffValue ? new Date(kickOffValue).getTime() : NaN;
                     const hasStarted = statusValue !== 'upcoming' || (!Number.isNaN(kickOffMillis) && kickOffMillis <= Date.now());
 
-                    const homeTeamLogo = teamLogoMap.get(game.HomeTeam) || 'path/to/default_logo.png';
-                    const awayTeamLogo = teamLogoMap.get(game.AwayTeam) || 'path/to/default_logo.png';
+                    const homeTeamLogo = teamLogoMap.get(game.HomeTeam) || '';
+                    const awayTeamLogo = teamLogoMap.get(game.AwayTeam) || '';
 
                     // Populate prediction form for upcoming games only
-                    if (game.Status && game.Status.toLowerCase() === 'upcoming') {
+                    if (statusValue === 'upcoming') {
                         const predictionGameCard = document.createElement('div');
                         predictionGameCard.classList.add('app-card', 'prediction-game-card');
                         if (isLocked) {
                             predictionGameCard.style.opacity = '0.7';
                         }
 
-                        const disabledAttr = `${isLocked ? 'disabled data-locked="true"' : ''} ${hasStarted ? 'disabled data-started="true"' : ''}`;
+                        const disabledAttrs = [];
+                        if (isLocked || hasStarted) disabledAttrs.push('disabled');
+                        if (isLocked) disabledAttrs.push('data-locked="true"');
+                        if (hasStarted) disabledAttrs.push('data-started="true"');
+                        const disabledAttr = disabledAttrs.join(' ');
                         const lockNotice = isLocked
                             ? `<p class="lock-notice">${lockMessage}</p>`
                             : hasStarted
                                 ? `<p class="lock-notice">Predicciones cerradas: el partido ya empezó.</p>`
                                 : '';
 
+                        const homeLogoMarkup = homeTeamLogo
+                            ? `<img src="${escapeHtml(homeTeamLogo)}" alt="${escapeHtml(game.HomeTeam)} Logo" class="team-logo-small">`
+                            : '<div class="team-logo-placeholder">-</div>';
+                        const awayLogoMarkup = awayTeamLogo
+                            ? `<img src="${escapeHtml(awayTeamLogo)}" alt="${escapeHtml(game.AwayTeam)} Logo" class="team-logo-small">`
+                            : '<div class="team-logo-placeholder">-</div>';
+
                         predictionGameCard.innerHTML = `
                             <div class="teams-row">
                                 <div class="team">
-                                    <img src="${homeTeamLogo}" alt="${game.HomeTeam} Logo" class="team-logo-small">
-                                    <span class="team-name">${game.HomeTeam}</span>
+                                    ${homeLogoMarkup}
+                                    <span class="team-name">${escapeHtml(game.HomeTeam)}</span>
                                 </div>
                                 <div class="vs-separator">vs</div>
                                 <div class="team">
-                                    <img src="${awayTeamLogo}" alt="${game.AwayTeam} Logo" class="team-logo-small">
-                                    <span class="team-name">${game.AwayTeam}</span>
+                                    ${awayLogoMarkup}
+                                    <span class="team-name">${escapeHtml(game.AwayTeam)}</span>
                                 </div>    
                             </div>
                             <p class="game-detail-line"><strong>Fase:</strong> ${stageLabel}</p>       
@@ -706,6 +724,7 @@
 
             let successCount = 0;
             let errorOccurred = false;
+            const writeTasks = [];
 
             for (const gameId in predictions) {
                 if (predictions.hasOwnProperty(gameId)) {
@@ -720,8 +739,9 @@
                         console.warn(`Skipping prediction for game ${gameId}: phase is locked.`);
                         continue;
                     }
-                    if (gameInfo.Status && gameInfo.Status.toLowerCase() !== 'upcoming') {
-                        console.warn(`Skipping prediction for game ${gameId} (status is ${gameInfo.Status}).`);
+                    const gameInfoStatus = getGameStatus(gameInfo);
+                    if (gameInfoStatus !== 'upcoming') {
+                        console.warn(`Skipping prediction for game ${gameId} (status is ${gameInfoStatus}).`);
                         continue;
                     }
                     if (gameInfo.KickOffTime) {
@@ -738,58 +758,40 @@
                         continue;
                     }
 
-                    try {
-                        const predictionsRef = collection(db, 'predictions');
-                        const existingPredictionsQuery = query(
-                            predictionsRef,
-                            where('userId', '==', currentUserId),
-                            where('gameId', '==', gameId),
-                            where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-                        );
-                        const existingPredictionsSnapshot = await getDocs(existingPredictionsQuery);
+                    const predictionData = {
+                        userId: currentUserId,
+                        playerName: playerName,
+                        gameId: gameId,
+                        predictedHomeScore: prediction.predictedHomeScore,
+                        predictedAwayScore: prediction.predictedAwayScore,
+                        tournamentId: TOURNAMENT_CONFIG.tournamentId,
+                        timestamp: new Date() // Update timestamp on every submission
+                    };
 
-                        const predictionData = {
-                            userId: currentUserId,
-                            playerName: playerName,
-                            userEmail: currentUserEmail || '',
-                            gameId: gameId,
-                            predictedHomeScore: prediction.predictedHomeScore,
-                            predictedAwayScore: prediction.predictedAwayScore,
-                            tournamentId: TOURNAMENT_CONFIG.tournamentId,
-                            timestamp: new Date() // Update timestamp on every submission
-                        };
+                    const predictionDocId = `${currentUserId}_${gameId}`;
+                    const predictionDocRef = doc(db, 'predictions', predictionDocId);
 
-                        const predictionDocId = `${currentUserId}_${gameId}`;
-                        const predictionDocRef = doc(db, 'predictions', predictionDocId);
-
-                        // Upsert canonical document for this (user, game)
-                        await setDoc(predictionDocRef, predictionData, { merge: true });
-                        console.log(`Upserted prediction for game ${gameId} by ${playerName} (Doc ID: ${predictionDocId})`);
-
-                        // Clean up any stray duplicates that may exist
-                        const deletePromises = [];
-                        existingPredictionsSnapshot.forEach(existingDoc => {
-                            if (existingDoc.id !== predictionDocId) {
-                                deletePromises.push(deleteDoc(existingDoc.ref));
-                            }
-                        });
-                        if (deletePromises.length > 0) {
-                            await Promise.all(deletePromises);
-                            console.log(`Removed ${deletePromises.length} duplicate prediction document(s) for game ${gameId}.`);
-                        }
-
-                        successCount++;
-                    } catch (error) {
-                        console.error("Error submitting prediction for game", gameId, ": ", error);
-                        errorOccurred = true;
-                    }
+                    writeTasks.push(
+                        setDoc(predictionDocRef, predictionData, { merge: true })
+                            .then(() => {
+                                console.log(`Upserted prediction for game ${gameId} by ${playerName} (Doc ID: ${predictionDocId})`);
+                                successCount++;
+                            })
+                            .catch(error => {
+                                console.error("Error submitting prediction for game", gameId, ": ", error);
+                                errorOccurred = true;
+                            })
+                    );
                 }
             }
+
+            await Promise.all(writeTasks);
 
             if (successCount > 0 && !errorOccurred) {
                 setPredictionMessage(`Se enviaron ${successCount} predicción(es) correctamente.`, 'success');
                 // Clear prediction input fields, keep player name
                 predictionInputs.forEach(input => input.value = '');
+                window.dispatchEvent(new Event('predictionsUpdated'));
                 // ADD THIS LINE BELOW to refresh "My Predictions"
                 loadMyPredictions(); // Refresh "My Predictions" after submission!
             } else if (successCount > 0 && errorOccurred) {
@@ -811,7 +813,7 @@
         let myPredictionsFiltersInitialized = false;
 
         function normalizeGameStatus(game) {
-            const statusValue = (game.Status || game.status || 'upcoming').toLowerCase();
+            const statusValue = getGameStatus(game);
             return statusValue === 'in_play' ? 'live' : statusValue;
         }
 
@@ -907,15 +909,11 @@
                     return timeB - timeA;
                 });
 
-                // Fetch all game data once
-                gamesMapForPredictions = new Map();
-                const gamesSnapshot = await getDocs(query(
-                    collection(db, 'games'),
-                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
-                ));
-                gamesSnapshot.forEach(doc => {
-                    gamesMapForPredictions.set(doc.id, doc.data());
-                });
+                gamesMapForPredictions = new Map(gamesMapById);
+                if (gamesMapForPredictions.size === 0) {
+                    await loadGames();
+                    gamesMapForPredictions = new Map(gamesMapById);
+                }
 
                 if (myPredictionsFilterBar) {
                     myPredictionsFilterBar.style.display = 'block';
@@ -995,7 +993,7 @@
                     const statusLabelMap = {
                         finished: 'Finalizado',
                         live: 'En vivo',
-                        upcoming: 'Proximo'
+                        upcoming: 'Próximo'
                     };
                     const statusClass = statusValue === 'live' ? 'live' : statusValue;
                     const statusLabel = statusLabelMap[statusValue] || statusValue;
@@ -1007,13 +1005,13 @@
                     predictionCard.innerHTML = `
                         <div class="teams-row">
                             <div class="team">
-                                ${homeLogoUrl ? `<img src="${homeLogoUrl}" alt="${game.HomeTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                                <p class="team-name">${game.HomeTeam}</p>
+                                ${homeLogoUrl ? `<img src="${escapeHtml(homeLogoUrl)}" alt="${escapeHtml(game.HomeTeam)} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                                <p class="team-name">${escapeHtml(game.HomeTeam)}</p>
                             </div>
                             <div class="vs-separator">vs</div>
                             <div class="team">
-                                ${awayLogoUrl ? `<img src="${awayLogoUrl}" alt="${game.AwayTeam} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
-                                <p class="team-name">${game.AwayTeam}</p>
+                                ${awayLogoUrl ? `<img src="${escapeHtml(awayLogoUrl)}" alt="${escapeHtml(game.AwayTeam)} Logo" class="team-logo">` : '<div class="team-logo-placeholder">-</div>'}
+                                <p class="team-name">${escapeHtml(game.AwayTeam)}</p>
                             </div>
                         </div>
                         <p><strong>Fase:</strong> ${phaseLabel}</p>

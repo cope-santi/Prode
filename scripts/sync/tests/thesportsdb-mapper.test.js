@@ -19,8 +19,9 @@ const mappedFinished = mapEventToGame(finishedEvent);
 assert.equal(mappedFinished.externalMatchId, "123");
 assert.equal(mappedFinished.HomeTeam, "Argentina");
 assert.equal(mappedFinished.AwayTeam, "Brazil");
-assert.equal(mappedFinished.status, "FINISHED");
-assert.equal(mappedFinished.Status, "finished");
+assert.equal(mappedFinished.status, "finished");
+assert.equal(mappedFinished.Status, undefined);
+assert.equal(mappedFinished.providerStatus, "FINISHED");
 assert.equal(mappedFinished.HomeScore, 2);
 assert.equal(mappedFinished.AwayScore, 1);
 assert.equal(mappedFinished.Stage, "GROUP");
@@ -44,8 +45,9 @@ const upcomingEvent = {
 };
 
 const mappedUpcoming = mapEventToGame(upcomingEvent);
-assert.equal(mappedUpcoming.status, "SCHEDULED");
-assert.equal(mappedUpcoming.Status, "upcoming");
+assert.equal(mappedUpcoming.status, "upcoming");
+assert.equal(mappedUpcoming.Status, undefined);
+assert.equal(mappedUpcoming.providerStatus, "SCHEDULED");
 assert.equal(mappedUpcoming.HomeScore, null);
 assert.equal(mappedUpcoming.AwayScore, null);
 assert.equal(mappedUpcoming.StageKey, "GROUP-B-MD2");
@@ -67,5 +69,21 @@ assert.equal(mappedR32.Stage, "R32");
 assert.equal(mappedR32.Group, null);
 assert.equal(mappedR32.Matchday, null);
 assert.equal(mappedR32.StageKey, "R32");
+
+const invalidGroupEvent = {
+  idEvent: "999",
+  strHomeTeam: "Spain",
+  strAwayTeam: "France",
+  dateEvent: "2026-06-15",
+  strTime: "18:00:00",
+  strStatus: "Not Started",
+  strRound: "Group 1 - Matchday 1",
+  strGroup: "1",
+  intRound: ""
+};
+
+const mappedInvalidGroup = mapEventToGame(invalidGroupEvent);
+assert.equal(mappedInvalidGroup.Group, null);
+assert.equal(mappedInvalidGroup.StageKey, null);
 
 console.log("TheSportsDB mapper tests passed.");

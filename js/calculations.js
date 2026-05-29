@@ -28,9 +28,17 @@ import { buildStageKey } from './tournament-config.js';
  * - Correct Goal Difference (abs): +1 point
  * Maximum: 10 points
  */
+function normalizeGameStatus(game) {
+  const rawStatus = game.status !== undefined && game.status !== null ? game.status : game.Status;
+  const normalized = String(rawStatus || '').toLowerCase();
+  if (normalized === 'in_play') return 'live';
+  if (normalized === 'scheduled') return 'upcoming';
+  return normalized;
+}
+
 function calculatePoints(prediction, game) {
   // Normalize game object to handle both uppercase and lowercase properties
-  const gameStatus = (game.status || game.Status || '').toLowerCase();
+  const gameStatus = normalizeGameStatus(game);
   const homeScore = game.homeScore !== undefined ? game.homeScore : game.HomeScore;
   const awayScore = game.awayScore !== undefined ? game.awayScore : game.AwayScore;
 
@@ -136,7 +144,7 @@ function calculatePlayerStats(games, predictions) {
     if (game) {
       // Normalize game data to use lowercase 'status', 'homeScore', 'awayScore'
       const normalizedGame = {
-        status: (game.Status || game.status || '').toLowerCase(),
+        Status: normalizeGameStatus(game),
         homeScore: game.HomeScore !== undefined ? game.HomeScore : game.homeScore,
         awayScore: game.AwayScore !== undefined ? game.AwayScore : game.awayScore
       };
@@ -178,6 +186,9 @@ function calculatePlayerStats(games, predictions) {
 
     if (scores.length > 0) {
       const maxScore = Math.max(...scores);
+      if (maxScore <= 0) {
+        return;
+      }
       // All players tied for max score in a fecha get credited with a win
       Object.keys(playersInPhase).forEach(userId => {
         if (playersInPhase[userId] === maxScore) {
@@ -227,7 +238,7 @@ function aggregatePredictionsByPlayer(games, predictions) {
     // Normalize to a single schema so scoring works for Firestore-shaped docs
     const normalized = {
       id: game.id,
-      status: (game.status || game.Status || '').toLowerCase(),
+      Status: normalizeGameStatus(game),
       homeScore: game.homeScore !== undefined ? game.homeScore : game.HomeScore,
       awayScore: game.awayScore !== undefined ? game.awayScore : game.AwayScore
     };
@@ -352,7 +363,7 @@ function normalizeGame(firestoreGame) {
     awayTeam: firestoreGame.AwayTeam,
     homeScore: firestoreGame.HomeScore !== null ? firestoreGame.HomeScore : null,
     awayScore: firestoreGame.AwayScore !== null ? firestoreGame.AwayScore : null,
-    status: firestoreGame.Status?.toLowerCase?.() || 'upcoming',
+    status: normalizeGameStatus(firestoreGame) || 'upcoming',
     kickOffTime: kickOffTime.toISOString(),
     stage: firestoreGame.Stage,
     group: firestoreGame.Group,
@@ -409,5 +420,6 @@ export {
   sortPlayersByStats,
   getScoreClass,
   normalizeGame,
-  normalizePrediction
+  normalizePrediction,
+  normalizeGameStatus
 };

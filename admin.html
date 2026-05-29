@@ -129,7 +129,7 @@
                             <div class="form-group mb-3">
                                 <label for="adminStatus">Estado:</label>
                                 <select id="adminStatus" class="form-control">
-                                    <option value="upcoming">Proximo</option>
+                                    <option value="upcoming">Próximo</option>
                                     <option value="finished">Finalizado</option>
                                     <option value="live">En vivo</option>
                                 </select>
@@ -211,6 +211,7 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { firebaseConfig } from "./js/firebase-config.js";
+        import { ADMIN_UID } from "./js/app-config.js";
         // Import admin panel module
         import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js";
         import { TOURNAMENT_CONFIG } from "./js/tournament-config.js";
@@ -250,9 +251,6 @@
         let currentUserId = null;
         let currentUserEmail = null;
         let allTeams = [];
-        // ADMIN_UID - Must match the value in index.html
-        const ADMIN_UID = 'eP44roQf40ZOgh0rZYnsh91y7vI3'; // Same UID as in index.html
-
         /**
          * Initialize admin dropdowns - Fetch teams from Firestore
          */
@@ -332,7 +330,7 @@
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    adminParticipantsList.innerHTML = '<p class="text-center text-muted">No hay participantes todavia.</p>';
+                    adminParticipantsList.innerHTML = '<p class="text-center text-muted">No hay participantes todavía.</p>';
                     if (adminParticipantsCount) {
                         adminParticipantsCount.textContent = '0 participantes';
                     }
@@ -348,24 +346,19 @@
                     const timestamp = prediction.timestamp ? new Date(prediction.timestamp.toDate ? prediction.timestamp.toDate() : prediction.timestamp).getTime() : 0;
                     const existing = participantsMap.get(userId);
                     const count = existing ? existing.count + 1 : 1;
-                    let playerName = prediction.playerName || 'Anonimo';
-                    let userEmail = prediction.userEmail || '';
+                    let playerName = prediction.playerName || 'Anónimo';
                     let latestTimestamp = timestamp;
 
                     if (existing) {
                         if (existing.timestamp >= timestamp) {
                             playerName = existing.playerName;
-                            userEmail = existing.userEmail || userEmail;
                             latestTimestamp = existing.timestamp;
-                        } else if (!userEmail && existing.userEmail) {
-                            userEmail = existing.userEmail;
                         }
                     }
 
                     participantsMap.set(userId, {
                         userId,
                         playerName,
-                        userEmail,
                         timestamp: latestTimestamp,
                         count
                     });
@@ -380,27 +373,63 @@
                 participants.forEach(participant => {
                     const card = document.createElement('div');
                     card.className = 'app-card participant-card d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3';
-                    const emailLabel = participant.userEmail ? participant.userEmail : 'Sin correo';
                     const lastUpdate = formatTimestamp(participant.timestamp);
-                    const nameValue = participant.playerName || 'Anonimo';
-                    card.innerHTML = `
-                        <div class="flex-grow-1">
-                            <label class="text-muted small">Nombre</label>
-                            <input type="text" class="form-control form-control-sm participant-name-input mb-2" value="${nameValue}">
-                            <div class="text-muted small">Correo: ${emailLabel}</div>
-                            <div class="text-muted small">UID: ${participant.userId}</div>
-                            <div class="text-muted small">Predicciones: ${participant.count}</div>
-                            ${lastUpdate ? `<div class="text-muted small">Ultimo envio: ${lastUpdate}</div>` : ''}
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-success btn-sm" data-action="update-participant" data-user-id="${participant.userId}">
-                                Guardar nombre
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-participant" data-user-id="${participant.userId}" data-user-label="${participant.playerName || participant.userId}">
-                                Eliminar
-                            </button>
-                        </div>
-                    `;
+                    const nameValue = participant.playerName || 'Anónimo';
+
+                    const details = document.createElement('div');
+                    details.className = 'flex-grow-1';
+
+                    const label = document.createElement('label');
+                    label.className = 'text-muted small';
+                    label.textContent = 'Nombre';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control form-control-sm participant-name-input mb-2';
+                    input.value = nameValue;
+
+                    const uid = document.createElement('div');
+                    uid.className = 'text-muted small';
+                    uid.textContent = `UID: ${participant.userId}`;
+
+                    const count = document.createElement('div');
+                    count.className = 'text-muted small';
+                    count.textContent = `Predicciones: ${participant.count}`;
+
+                    details.appendChild(label);
+                    details.appendChild(input);
+                    details.appendChild(uid);
+                    details.appendChild(count);
+
+                    if (lastUpdate) {
+                        const updated = document.createElement('div');
+                        updated.className = 'text-muted small';
+                        updated.textContent = `Último envío: ${lastUpdate}`;
+                        details.appendChild(updated);
+                    }
+
+                    const actions = document.createElement('div');
+                    actions.className = 'd-flex gap-2';
+
+                    const updateButton = document.createElement('button');
+                    updateButton.type = 'button';
+                    updateButton.className = 'btn btn-outline-success btn-sm';
+                    updateButton.dataset.action = 'update-participant';
+                    updateButton.dataset.userId = participant.userId;
+                    updateButton.textContent = 'Guardar nombre';
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'button';
+                    deleteButton.className = 'btn btn-outline-danger btn-sm';
+                    deleteButton.dataset.action = 'delete-participant';
+                    deleteButton.dataset.userId = participant.userId;
+                    deleteButton.dataset.userLabel = participant.playerName || participant.userId;
+                    deleteButton.textContent = 'Eliminar';
+
+                    actions.appendChild(updateButton);
+                    actions.appendChild(deleteButton);
+                    card.appendChild(details);
+                    card.appendChild(actions);
                     adminParticipantsList.appendChild(card);
                 });
 
