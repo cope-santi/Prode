@@ -9,6 +9,7 @@ let musicAudio = null;
 let musicTimer = null;
 let shellFrame = null;
 let shellLoader = null;
+let autoplayUnlockBound = false;
 
 export function mountNavbar(options = {}) {
     const {
@@ -204,7 +205,7 @@ function buildEmbeddedUrl(pathname, search = '', hash = '') {
         params.forEach((value, key) => url.searchParams.set(key, value));
     }
     url.searchParams.set('embedded', '1');
-    url.searchParams.set('v', 'persistent-shell-3');
+    url.searchParams.set('v', 'persistent-shell-4');
     url.hash = hash || '';
     return url.pathname + url.search + url.hash;
 }
@@ -295,12 +296,50 @@ function mountMusicPlayer(container) {
     }
 
     // Best-effort resume: browsers block autoplay until a user gesture, so if it
-    // is blocked we leave the controls showing "paused" until the user hits Play.
+    // is blocked we start it on the first page interaction instead.
     if (savedState.playing && audio.paused) {
-        audio.play()
-            .then(() => updateMusicControls(controls, { playing: true }))
-            .catch(() => updateMusicControls(controls, { playing: false }));
+        tryPlayMusic(audio, controls);
     }
+}
+
+function tryPlayMusic(audio, controls) {
+    return audio.play()
+        .then(() => {
+            saveMusicState({ playing: true });
+            updateMusicControls(controls, { playing: true });
+        })
+        .catch(() => {
+            saveMusicState({ playing: true });
+            updateMusicControls(controls, { playing: false });
+            bindAutoplayUnlock(audio, controls);
+        });
+}
+
+function bindAutoplayUnlock(audio, controls) {
+    if (autoplayUnlockBound) return;
+    autoplayUnlockBound = true;
+
+    const unlock = () => {
+        audio.play()
+            .then(() => {
+                saveMusicState({ playing: true });
+                updateMusicControls(controls, { playing: true });
+                cleanup();
+            })
+            .catch(() => {
+                updateMusicControls(controls, { playing: false });
+            });
+    };
+
+    const cleanup = () => {
+        document.removeEventListener('pointerdown', unlock);
+        document.removeEventListener('keydown', unlock);
+        document.removeEventListener('touchstart', unlock);
+    };
+
+    document.addEventListener('pointerdown', unlock, { passive: true });
+    document.addEventListener('keydown', unlock);
+    document.addEventListener('touchstart', unlock, { passive: true });
 }
 
 function ensureAudio(host) {
@@ -318,14 +357,14 @@ function ensureAudio(host) {
 function readMusicState() {
     try {
         return {
-            playing: false,
+            playing: true,
             muted: false,
             time: 0,
             updatedAt: Date.now(),
             ...JSON.parse(localStorage.getItem(MUSIC_STORAGE_KEY) || '{}')
         };
     } catch (error) {
-        return { playing: false, muted: false, time: 0, updatedAt: Date.now() };
+        return { playing: true, muted: false, time: 0, updatedAt: Date.now() };
     }
 }
 
