@@ -30,7 +30,7 @@ jobs:
           THESPORTSDB_LEAGUE_ID: ${{ secrets.THESPORTSDB_LEAGUE_ID }}
           THESPORTSDB_SEASON: ${{ secrets.THESPORTSDB_SEASON }}
           THESPORTSDB_ROUNDS: ${{ secrets.THESPORTSDB_ROUNDS }}
-          SYNC_TEAM_LOGOS: ${{ secrets.SYNC_TEAM_LOGOS }}
+          SYNC_TEAM_LOGOS: ${{ secrets.SYNC_TEAM_LOGOS || secrets.SYNC_TEAM_LOGO }}
           FORCE_TEAM_LOGOS: ${{ secrets.FORCE_TEAM_LOGOS }}
           TOURNAMENT_ID: ${{ secrets.TOURNAMENT_ID }}
           LOOKBACK_DAYS: ${{ secrets.LOOKBACK_DAYS }}
