@@ -46,10 +46,13 @@ async function loadTournamentGames(db) {
     const gamesMap = {};
 
     gamesSnapshot.forEach(doc => {
+        const rawStatus = doc.data().status !== undefined && doc.data().status !== null
+            ? doc.data().status
+            : doc.data().Status;
         const gameData = {
             id: doc.id,
             ...doc.data(),
-            status: (doc.data().Status || '').toLowerCase(),
+            status: String(rawStatus || '').toLowerCase(),
             homeScore: doc.data().HomeScore,
             awayScore: doc.data().AwayScore,
             stageKey: doc.data().StageKey,
@@ -272,7 +275,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             meta.appendChild(phaseSpan);
             meta.appendChild(predictedSpan);
 
-            if (game.Status === 'finished' && game.HomeScore !== null) {
+            if (game.status === 'finished' && game.HomeScore !== null) {
                 const actualSpan = document.createElement('span');
                 actualSpan.textContent = ` | Resultado: ${game.HomeScore} - ${game.AwayScore}`;
                 meta.appendChild(actualSpan);

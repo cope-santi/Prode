@@ -163,6 +163,13 @@ async function run() {
       teamLogoMissing: teamLogoStats.missing,
       teamLogoTotal: teamLogoStats.total
     });
+
+    console.log(
+      `Sync summary: totalEvents=${events.length}, created=${created}, updated=${updated}, ` +
+      `skippedManual=${skippedManual}, skippedUnchanged=${skippedUnchanged}, ` +
+      `teamLogoUpdated=${teamLogoStats.updated}, teamLogoSkipped=${teamLogoStats.skipped}, ` +
+      `teamLogoMissing=${teamLogoStats.missing}`
+    );
   } catch (error) {
     const syncStatus = error.code === "rate_limit" ? "rate_limit" : "error";
     await updateSyncStatus(db, config.tournamentId, {
@@ -502,7 +509,8 @@ function buildPayload(mapped, config, now, isCreate) {
     payload.score = mapped.score;
     payload.HomeScore = mapped.HomeScore;
     payload.AwayScore = mapped.AwayScore;
-  } else if (isCreate) {
+  } else {
+    payload.score = null;
     payload.HomeScore = null;
     payload.AwayScore = null;
   }
@@ -521,16 +529,16 @@ function sanitizePayload(payload, existingData) {
   const existingStatus = String(existingData.status || existingData.Status || "").toLowerCase();
   const hasLegacyStatus = Object.prototype.hasOwnProperty.call(existingData, "Status");
 
-  if (existingStatus === "finished" && sanitized.Status !== "finished") {
+  if (existingStatus === "finished" && sanitized.status !== "finished") {
     sanitized.status = "finished";
     sanitized.providerStatus = existingData.providerStatus || "FINISHED";
     sanitized.Status = admin.firestore.FieldValue.delete();
   }
 
   if (sanitized.status !== "finished") {
-    delete sanitized.score;
-    delete sanitized.HomeScore;
-    delete sanitized.AwayScore;
+    sanitized.score = null;
+    sanitized.HomeScore = null;
+    sanitized.AwayScore = null;
   }
 
   if (!hasLegacyStatus) {
