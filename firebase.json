@@ -6,12 +6,17 @@
     "public": ".",
     "ignore": [
       "firebase.json",
+      "firestore.rules",
       ".firebaserc",
       "**/.*",
-      "**/node_modules/**",
+      ".git/**",
+      ".claude/**",
       ".github/**",
+      "**/node_modules/**",
+      "firebase-uploader/**",
       "scripts/**",
       "README.md",
+      "package*.json",
       "**/.venv/**"
     ]
   }
