@@ -229,8 +229,15 @@
                     </button>
                 </div>
                 <div class="modal-body" id="resetModalBody">
+                    <p>Ingresa el correo de tu cuenta y te enviamos un enlace seguro para crear una nueva contrasena.</p>
+                    <div class="form-group mb-3">
+                        <label for="resetEmailInput">Correo:</label>
+                        <input type="email" id="resetEmailInput" class="form-control" placeholder="tu@email.com" autocomplete="email" inputmode="email">
                     </div>
+                    <p id="resetMessage" class="mb-0"></p>
+                </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-info" id="resetSubmitButton">Enviar enlace</button>
                     <button type="button" class="btn btn-secondary" id="closeFooterButton">Cerrar</button>
                 </div>
             </div>
@@ -310,8 +317,10 @@
         const authMessageDiv = document.getElementById('auth-message');
         const signOutButton = document.getElementById('signOutButton');
         const forgotPasswordLink = document.getElementById('forgotPasswordLink'); 
-        const resetModalBody = document.getElementById('resetModalBody');
         const resetModalElement = document.getElementById('resetModal'); 
+        const resetEmailInput = document.getElementById('resetEmailInput');
+        const resetSubmitButton = document.getElementById('resetSubmitButton');
+        const resetMessage = document.getElementById('resetMessage');
         
         const resetModal = new bootstrap.Modal(resetModalElement); 
         const closeHeaderButton = document.getElementById('closeHeaderButton');
@@ -733,8 +742,55 @@
             }
         }
 
-        forgotPasswordLink.addEventListener('click', async (e) => {
+        async function sendPasswordResetLink() {
+            const email = resetEmailInput.value.trim();
+            if (!email) {
+                resetMessage.textContent = 'Ingresa tu correo para enviar el enlace.';
+                resetMessage.className = 'text-warning mb-0';
+                return;
+            }
+
+            resetSubmitButton.disabled = true;
+            resetMessage.textContent = 'Enviando enlace...';
+            resetMessage.className = 'text-muted mb-0';
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                resetMessage.textContent = `Listo. Si ${email} esta registrado, va a recibir un correo para cambiar la contrasena. Revisa spam tambien.`;
+                resetMessage.className = 'text-success mb-0';
+            } catch (error) {
+                let errorMessage = 'Ocurrio un error al enviar el correo. Intenta de nuevo.';
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = 'No encontramos un usuario con ese correo.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'El correo ingresado no es valido.';
+                } else {
+                    console.error("Password reset error:", error);
+                }
+                resetMessage.textContent = errorMessage;
+                resetMessage.className = 'text-danger mb-0';
+            } finally {
+                resetSubmitButton.disabled = false;
+            }
+        }
+
+        forgotPasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
+            resetEmailInput.value = userEmailInput.value.trim();
+            resetMessage.textContent = '';
+            resetMessage.className = 'mb-0';
+            resetModal.show();
+        });
+
+        resetSubmitButton.addEventListener('click', sendPasswordResetLink);
+        resetEmailInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendPasswordResetLink();
+            }
+        });
+
+        /*
 
             // 1. Get the email address from the email input field
             const email = userEmailInput.value.trim();
@@ -780,6 +836,7 @@
                 // The modal is already shown, so we just update the content.
             }
         });
+        */
 
         closeHeaderButton.addEventListener('click', () => {
             // resetModal is the native JS instance initialized earlier: const resetModal = new bootstrap.Modal(resetModalElement);

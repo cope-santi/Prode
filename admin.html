@@ -578,16 +578,16 @@
             e.preventDefault();
             const email = userEmailInput.value.trim();
             if (!email) {
-                authMessageDiv.textContent = 'Please enter your email first.';
+                authMessageDiv.textContent = 'Ingresa tu correo primero.';
                 return;
             }
             sendPasswordResetEmail(auth, email)
                 .then(() => {
-                    authMessageDiv.textContent = 'Password reset email sent! Check your inbox.';
+                    authMessageDiv.textContent = 'Correo de recuperacion enviado. Revisa tu bandeja y spam.';
                     authMessageDiv.style.color = 'green';
                 })
                 .catch((error) => {
-                    authMessageDiv.textContent = `Error: ${error.message}`;
+                    authMessageDiv.textContent = `Error al enviar el correo: ${error.message}`;
                     authMessageDiv.style.color = 'red';
                 });
         });
