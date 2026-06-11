@@ -142,6 +142,7 @@
         let currentDisplayName = '';
         let userPredictionsByGame = new Map();
         const saveTimers = new Map();
+        const lockRefreshTimers = new Map();
 
         const KNOCKOUT_STAGES = ['R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
         const STAGE_LABELS = {
@@ -266,6 +267,7 @@
                 });
 
                 stageUnlocks = buildStageUnlocks(buildStageState(allGames));
+                scheduleLockRefreshes();
 
                 updateStageUI();
                 displayFilteredGames();
@@ -352,6 +354,37 @@
                 </div>
                 <p class="pred-status ok" data-pred-status="${escapeHtml(game.id)}">${pred ? 'Guardado ✓' : ''}</p>
             `;
+        }
+
+        function canPredictGame(game) {
+            if (!game || !currentUserId) return false;
+            if (getGameStatus(game) !== 'upcoming') return false;
+            const stageId = getStageIdFromGame(game);
+            const isLocked = stageId && Object.prototype.hasOwnProperty.call(stageUnlocks, stageId)
+                ? !stageUnlocks[stageId] : false;
+            return !isLocked && !hasKickedOff(game);
+        }
+
+        function scheduleLockRefreshes() {
+            lockRefreshTimers.forEach(timer => clearTimeout(timer));
+            lockRefreshTimers.clear();
+
+            const now = Date.now();
+            const maxDelay = 2147483647;
+            allGames.forEach(game => {
+                if (!game.KickOffTime || getGameStatus(game) !== 'upcoming') return;
+                const kickoff = new Date(game.KickOffTime).getTime();
+                const delay = kickoff - now;
+                if (!Number.isFinite(delay) || delay < 0 || delay > maxDelay) return;
+
+                const timer = setTimeout(() => {
+                    saveTimers.forEach(saveTimer => clearTimeout(saveTimer));
+                    saveTimers.clear();
+                    displayFilteredGames();
+                    scheduleLockRefreshes();
+                }, delay + 1000);
+                lockRefreshTimers.set(game.id, timer);
+            });
         }
 
         function createGameCard(game) {
@@ -480,6 +513,12 @@
 
         async function savePredictionForGame(gameId) {
             if (!currentUserId) return;
+            const game = allGames.find(item => item.id === gameId);
+            if (!canPredictGame(game)) {
+                setStatus(gameId, 'Predicciones cerradas: el partido ya empezÃ³.', 'error');
+                displayFilteredGames();
+                return;
+            }
             const container = document.querySelector(`[data-pred-game="${gameId}"]`);
             if (!container) return;
             const homeInput = container.querySelector('[data-team="home"]');
