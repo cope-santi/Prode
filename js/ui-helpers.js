@@ -6,7 +6,7 @@
 
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js";
-import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel } from "./tournament-config.js";
+import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentShortDateTime } from "./tournament-config.js";
 
 let cachedTournamentGames = null;
 let cachedGamesMap = null;
@@ -247,7 +247,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             const pointsClass = points === null ? 'pending' : points === 10 ? 'perfect' : points >= 7 ? 'high' : points >= 4 ? 'medium' : points > 0 ? 'low' : 'zero';
             const pointsDisplay = points === null ? 'N/A' : `${points}p`;
 
-            const gameDate = new Date(game.KickOffTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const gameDate = formatTournamentShortDateTime(game.KickOffTime);
             const phaseLabel = resolveStageLabel(game);
 
             const entry = document.createElement('div');

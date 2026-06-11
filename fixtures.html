@@ -122,7 +122,7 @@
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
         import { ADMIN_UID } from "./js/app-config.js";
-        import { TOURNAMENT_CONFIG, resolveStageLabel } from "./js/tournament-config.js";
+        import { TOURNAMENT_CONFIG, resolveStageLabel, formatTournamentDateTime } from "./js/tournament-config.js";
         import {
             getGameStatus, getStageIdFromGame, buildStageState, buildStageUnlocks,
             getLockMessage, hasKickedOff, resolveDisplayName
@@ -413,10 +413,7 @@
                 gameCard.classList.add('prediction-game-card');
             }
 
-            const kickoffDate = game.KickOffTime ? new Date(game.KickOffTime) : null;
-            const kickoffLabel = kickoffDate && !Number.isNaN(kickoffDate.getTime())
-                ? kickoffDate.toLocaleString([], { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
-                : 'Sin horario';
+            const kickoffLabel = game.KickOffTime ? formatTournamentDateTime(game.KickOffTime) : 'Sin horario';
 
             gameCard.innerHTML = `
                 <div class="teams-row">
@@ -592,9 +589,7 @@
                 const statusSnap = await getDoc(doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId));
                 const data = statusSnap.exists() ? statusSnap.data() : {};
                 const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
-                const lastText = lastSync
-                    ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
-                    : 'N/A';
+                const lastText = lastSync ? formatTournamentDateTime(lastSync) : 'N/A';
                 banner.textContent = `Actualización automática post-partido (no en vivo). Última sync: ${lastText}`;
             } catch (error) {
                 banner.textContent = 'Actualización automática post-partido (no en vivo).';

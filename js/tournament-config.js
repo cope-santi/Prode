@@ -14,6 +14,59 @@ export const TOURNAMENT_CONFIG = {
     matchdays: [1, 2, 3]
 };
 
+export const TOURNAMENT_TIME_ZONE = 'America/Edmonton';
+
+export function formatTournamentDateTime(value, options = {}) {
+    const date = value?.toDate?.() ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Sin horario';
+
+    return new Intl.DateTimeFormat('es-CA', {
+        timeZone: TOURNAMENT_TIME_ZONE,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: options.timeZoneName || 'short'
+    }).format(date);
+}
+
+export function formatTournamentShortDateTime(value) {
+    const date = value?.toDate?.() ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Sin horario';
+
+    return new Intl.DateTimeFormat('es-CA', {
+        timeZone: TOURNAMENT_TIME_ZONE,
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+    }).format(date);
+}
+
+export function formatTournamentWeekday(value) {
+    const date = value?.toDate?.() ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return new Intl.DateTimeFormat('es-CA', {
+        timeZone: TOURNAMENT_TIME_ZONE,
+        weekday: 'short'
+    }).format(date);
+}
+
+export function formatTournamentTime(value) {
+    const date = value?.toDate?.() ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+
+    return new Intl.DateTimeFormat('es-CA', {
+        timeZone: TOURNAMENT_TIME_ZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).format(date);
+}
+
 const stageLabelMap = new Map(TOURNAMENT_CONFIG.stages.map(stage => [stage.id, stage.label]));
 
 export function isGroupStage(stageId) {

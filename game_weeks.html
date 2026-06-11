@@ -82,7 +82,7 @@
         import { calculatePoints, calculatePlayerStats, getPlayerStats, getScoreClass } from "./js/calculations.js";
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
         import { createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js";
-        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys } from "./js/tournament-config.js";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, sortStageKeys, formatTournamentDateTime, formatTournamentTime, formatTournamentWeekday } from "./js/tournament-config.js";
 
         mountNavbar({ activeKey: "matches" });
 
@@ -405,9 +405,8 @@
                                     // Format kick-off time
                                     let kickOffDisplay = '';
                                     if (game.kickOffTime) {
-                                        const kickOffDate = new Date(game.kickOffTime);
-                                        const dayName = kickOffDate.toLocaleDateString('en-US', { weekday: 'short' });
-                                        const time = kickOffDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                        const dayName = formatTournamentWeekday(game.kickOffTime);
+                                        const time = formatTournamentTime(game.kickOffTime);
                                         kickOffDisplay = `${dayName} ${time}`;
                                     }
                                     
@@ -506,9 +505,7 @@
                 const statusSnap = await getDoc(statusRef);
                 const data = statusSnap.exists() ? statusSnap.data() : {};
                 const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
-                const lastText = lastSync
-                    ? (lastSync.toDate ? lastSync.toDate().toLocaleString() : new Date(lastSync).toLocaleString())
-                    : 'N/A';
+                const lastText = lastSync ? formatTournamentDateTime(lastSync) : 'N/A';
                 banner.textContent = `Actualización automática post-partido (no en vivo). Última sync: ${lastText}`;
             } catch (error) {
                 banner.textContent = 'Actualización automática post-partido (no en vivo).';

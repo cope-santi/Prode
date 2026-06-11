@@ -11,7 +11,7 @@
  *   await initializeAdminPanel(db, auth, ADMIN_UID);
  */
 
-import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage } from './tournament-config.js';
+import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage, formatTournamentDateTime } from './tournament-config.js';
 import { deleteField } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // Admin DOM References
@@ -266,7 +266,7 @@ export function populateAdminGameSelect(games) {
     games.forEach(game => {
         const option = document.createElement('option');
         option.value = game.id;
-        const kickOff = game.KickOffTime ? new Date(game.KickOffTime).toLocaleString() : 'TBD';
+        const kickOff = game.KickOffTime ? formatTournamentDateTime(game.KickOffTime) : 'TBD';
         option.textContent = `${game.HomeTeam} vs ${game.AwayTeam} (${kickOff})`;
         adminGameSelect.appendChild(option);
         gamesById.set(game.id, game);
