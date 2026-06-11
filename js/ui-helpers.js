@@ -16,6 +16,24 @@ let cachedGamesAt = 0;
 let cachedPredictionsAt = 0;
 const CACHE_TTL_MS = 60 * 1000;
 
+function normalizeHistoryStatus(game) {
+    const status = String(game?.status || game?.Status || 'upcoming').toLowerCase();
+    if (status === 'scheduled') return 'upcoming';
+    if (status === 'in_play') return 'live';
+    return status;
+}
+
+function hasGameStarted(game) {
+    const raw = game?.KickOffTime?.toDate?.() ? game.KickOffTime.toDate() : game?.KickOffTime;
+    const kickoff = raw ? new Date(raw).getTime() : NaN;
+    return !Number.isNaN(kickoff) && kickoff <= Date.now();
+}
+
+function canShowPredictionInHistory(game) {
+    const status = normalizeHistoryStatus(game);
+    return status !== 'upcoming' || hasGameStarted(game);
+}
+
 export function clearUiDataCache() {
     cachedTournamentGames = null;
     cachedGamesMap = null;
@@ -168,13 +186,16 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
         ]);
 
         const { gamesArray, gamesMap } = tournamentGames;
-        const userPredictions = allPredictions.filter(pred => pred.userId === userId);
+        const userPredictions = allPredictions.filter(pred => {
+            if (pred.userId !== userId) return false;
+            return canShowPredictionInHistory(gamesMap[pred.gameId]);
+        });
 
         if (userPredictions.length === 0) {
             contentEl.innerHTML = '';
             const emptyMessage = document.createElement('p');
             emptyMessage.style.color = '#bdbdbd';
-            emptyMessage.textContent = 'No hay predicciones para este jugador.';
+            emptyMessage.textContent = 'Todavia no hay predicciones visibles para este jugador. Se muestran cuando el partido empieza.';
             contentEl.appendChild(emptyMessage);
             return;
         }
@@ -275,7 +296,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             meta.appendChild(phaseSpan);
             meta.appendChild(predictedSpan);
 
-            if (game.status === 'finished' && game.HomeScore !== null) {
+            if (normalizeHistoryStatus(game) === 'finished' && game.HomeScore !== null) {
                 const actualSpan = document.createElement('span');
                 actualSpan.textContent = ` | Resultado: ${game.HomeScore} - ${game.AwayScore}`;
                 meta.appendChild(actualSpan);
