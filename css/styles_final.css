@@ -1431,3 +1431,20 @@ body .bg-dark {
 body .text-white {
     color: var(--wc-dark) !important;
 }
+
+.predictions-toggle {
+    margin-top: 10px;
+}
+
+.predictions-toggle summary {
+    cursor: pointer;
+    color: #f5c542;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    list-style-position: inside;
+    user-select: none;
+}
+
+.predictions-toggle summary:hover {
+    color: #ffe082;
+}
