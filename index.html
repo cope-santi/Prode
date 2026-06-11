@@ -247,8 +247,8 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
-        import { ADMIN_UID } from "./js/app-config.js";
-        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentDateTime } from "./js/tournament-config.js";
+        import { ADMIN_UID } from "./js/app-config.js?v=edmonton-time-1";
+        import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentDateTime } from "./js/tournament-config.js?v=edmonton-time-1";
         
         mountNavbar({ activeKey: "home" });
 

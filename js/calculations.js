@@ -1,4 +1,4 @@
-import { buildStageKey } from './tournament-config.js';
+import { buildStageKey } from './tournament-config.js?v=edmonton-time-1';
 
 /**
  * EA Predictor - Standardized Calculations Module

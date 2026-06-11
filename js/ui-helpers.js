@@ -5,8 +5,8 @@
  */
 
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js";
-import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentShortDateTime } from "./tournament-config.js";
+import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js?v=edmonton-time-1";
+import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentShortDateTime } from "./tournament-config.js?v=edmonton-time-1";
 
 let cachedTournamentGames = null;
 let cachedGamesMap = null;

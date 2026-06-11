@@ -11,7 +11,7 @@
  *   await initializeAdminPanel(db, auth, ADMIN_UID);
  */
 
-import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage, formatTournamentDateTime } from './tournament-config.js';
+import { TOURNAMENT_CONFIG, buildStageKey, isGroupStage, formatTournamentDateTime } from './tournament-config.js?v=edmonton-time-1';
 import { deleteField } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 // Admin DOM References

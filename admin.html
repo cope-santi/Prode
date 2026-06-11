@@ -214,10 +214,10 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         // Import centralized Firebase configuration
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
-        import { ADMIN_UID } from "./js/app-config.js";
+        import { ADMIN_UID } from "./js/app-config.js?v=edmonton-time-1";
         // Import admin panel module
-        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js";
-        import { TOURNAMENT_CONFIG } from "./js/tournament-config.js";
+        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js?v=edmonton-time-1";
+        import { TOURNAMENT_CONFIG } from "./js/tournament-config.js?v=edmonton-time-1";
 
         mountNavbar({ activeKey: "admin" });
         document.getElementById('admin-footer-year').textContent = new Date().getFullYear();

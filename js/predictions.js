@@ -6,7 +6,7 @@
  * (fixtures.html) so the rules stay in one place.
  */
 
-import { resolveStageKey, resolveStageLabel } from './tournament-config.js';
+import { resolveStageKey, resolveStageLabel } from './tournament-config.js?v=edmonton-time-1';
 
 export const STAGE_ORDER = ['GROUP', 'R32', 'R16', 'QF', 'SF', '3P', 'FINAL'];
 
