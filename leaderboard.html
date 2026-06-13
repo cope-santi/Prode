@@ -66,7 +66,7 @@
     <script type="module">
         import { mountNavbar } from "./js/layout.js?v=persistent-shell-4";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, getDocsFromServer, query, where, doc, getDoc, getDocFromServer } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { calculatePoints, calculatePlayerStats, sortPlayersByStats } from "./js/calculations.js?v=edmonton-time-1";
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
@@ -133,13 +133,31 @@
             return normalized;
         }
 
+        async function getFreshDocs(queryRef) {
+            try {
+                return await getDocsFromServer(queryRef);
+            } catch (error) {
+                console.warn('No se pudo leer del servidor, usando cache local:', error);
+                return getDocs(queryRef);
+            }
+        }
+
+        async function getFreshDoc(docRef) {
+            try {
+                return await getDocFromServer(docRef);
+            } catch (error) {
+                console.warn('No se pudo leer el estado del servidor, usando cache local:', error);
+                return getDoc(docRef);
+            }
+        }
+
         // --- Load All Results Function ---
         async function loadAllResults() {
             allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Cargando resultados y predicciones...</p>';
 
             try {
                 // 1. Fetch all games
-                const gamesSnapshot = await getDocs(query(
+                const gamesSnapshot = await getFreshDocs(query(
                     collection(db, 'games'),
                     where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 ));
@@ -153,7 +171,7 @@
                 });
 
                 // 2. Fetch all predictions
-                const predictionsSnapshot = await getDocs(query(
+                const predictionsSnapshot = await getFreshDocs(query(
                     collection(db, 'predictions'),
                     where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
                 ));
@@ -307,7 +325,7 @@
 
             try {
                 const statusRef = doc(db, 'sync_status', TOURNAMENT_CONFIG.tournamentId);
-                const statusSnap = await getDoc(statusRef);
+                const statusSnap = await getFreshDoc(statusRef);
                 const data = statusSnap.exists() ? statusSnap.data() : {};
                 const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
                 const lastText = lastSync ? formatTournamentDateTime(lastSync) : 'N/A';
