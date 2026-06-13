@@ -1187,6 +1187,61 @@ a:hover {
     margin-right: auto;
 }
 
+.scoring-info {
+    width: min(100%, 660px);
+    margin: 22px auto 0;
+    padding: 16px 18px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(11, 18, 32, 0.48);
+    color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+}
+
+.scoring-info h2 {
+    margin: 0 0 12px;
+    color: #ffffff !important;
+    font-size: 1.15rem;
+    letter-spacing: 0.1em;
+}
+
+.scoring-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.scoring-info-grid span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.scoring-info-grid strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--wc-secondary);
+    color: var(--wc-dark);
+    font-size: 0.9rem;
+}
+
+.scoring-info p {
+    margin: 12px 0 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.88rem;
+}
+
 #sync-status-banner {
     padding: 8px 12px;
     border-radius: 999px;
@@ -1447,4 +1502,14 @@ body .text-white {
 
 .predictions-toggle summary:hover {
     color: #ffe082;
+}
+
+@media (max-width: 640px) {
+    .scoring-info {
+        padding: 14px;
+    }
+
+    .scoring-info-grid {
+        grid-template-columns: 1fr;
+    }
 }
