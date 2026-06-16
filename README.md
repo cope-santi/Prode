@@ -60,7 +60,7 @@ Tip: crear un service account en Firebase Console, descargar el JSON y pegarlo c
 
 ### Workflow
 
-* `.github/workflows/post_match_sync.yml` corre cerca del final estimado de cada partido de fase de grupos y permite ejecucion manual.
+* `.github/workflows/post_match_sync.yml` corre cerca del inicio estimado de cada partido para publicar predicciones, y cerca del final estimado para aplicar puntos.
 * Para cambiar la frecuencia, editar el cron del workflow. En plan gratis conviene evitar intervalos muy agresivos para no agotar la cuota diaria de Firestore.
 * Usa 2 requests por corrida (eventos pasados + proximos).
 * Solo escribe scores cuando el partido esta FINISHED.

@@ -68,8 +68,10 @@ async function run() {
 
     const byExternal = new Map();
     const byMatchKey = new Map();
+    const existingGames = [];
     snapshot.forEach(doc => {
       const data = doc.data();
+      existingGames.push({ id: doc.id, ...data });
       if (data.externalProvider && data.externalMatchId) {
         byExternal.set(`${data.externalProvider}:${data.externalMatchId}`, doc);
       }
@@ -147,9 +149,11 @@ async function run() {
       ? await syncTeamLogos(db, config, events)
       : { updated: 0, skipped: 0, missing: 0, total: 0 };
 
-    const shouldRefreshCache = writeCount > 0 || await isPublicCacheMissing(db, config);
-    const publicCacheStats = shouldRefreshCache
+    const publicCachePlan = await getPublicCachePlan(db, config, existingGames, now, writeCount);
+    const publicCacheStats = publicCachePlan.full
       ? await updatePublicCache(db, config, now)
+      : publicCachePlan.startedGames.length > 0
+      ? await updateStartedPublicResults(db, config, now, publicCachePlan.startedGames)
       : { leaderboardPlayers: 0, resultGames: 0, skipped: true };
 
     await updateSyncStatus(db, config.tournamentId, {
@@ -663,17 +667,48 @@ async function updateSyncStatus(db, tournamentId, payload) {
   await ref.set(payload, { merge: true });
 }
 
-async function isPublicCacheMissing(db, config) {
+async function getPublicCachePlan(db, config, games, syncedAt, writeCount) {
+  if (writeCount > 0) {
+    return { full: true, startedGames: [] };
+  }
+
   const ref = db.collection("public_cache").doc(`${config.tournamentId}_leaderboard`);
   const snap = await ref.get();
-  return !snap.exists;
+  if (!snap.exists) {
+    return { full: true, startedGames: [] };
+  }
+
+  const visibleGames = games.filter(game => canPublishGamePredictions(game, syncedAt));
+  if (visibleGames.length === 0) {
+    return { full: false, startedGames: [] };
+  }
+
+  const resultRefs = visibleGames.map(game =>
+    db.collection("public_results").doc(`${config.tournamentId}_${game.id}`)
+  );
+  const resultSnaps = await db.getAll(...resultRefs);
+  const startedGames = visibleGames.filter((game, index) => {
+    const expectedStatus = getPublicGameStatus(game, syncedAt);
+    if (expectedStatus === "finished") return false;
+    return getPublicResultStatus(resultSnaps[index]) !== "live";
+  });
+  const missingFinishedResult = visibleGames.some((game, index) => {
+    const expectedStatus = getPublicGameStatus(game, syncedAt);
+    if (expectedStatus !== "finished") return false;
+    return getPublicResultStatus(resultSnaps[index]) !== "finished";
+  });
+
+  return {
+    full: missingFinishedResult,
+    startedGames
+  };
 }
 
 async function updatePublicCache(db, config, syncedAt) {
-  const [gamesSnapshot, predictionsSnapshot] = await Promise.all([
-    db.collection("games").where("tournamentId", "==", config.tournamentId).get(),
-    db.collection("predictions").where("tournamentId", "==", config.tournamentId).get()
-  ]);
+  const gamesSnapshot = await db
+    .collection("games")
+    .where("tournamentId", "==", config.tournamentId)
+    .get();
 
   const games = [];
   const predictions = [];
@@ -683,15 +718,24 @@ async function updatePublicCache(db, config, syncedAt) {
     games.push({ id: doc.id, ...doc.data() });
   });
 
-  predictionsSnapshot.forEach(doc => {
-    const data = doc.data();
-    const prediction = { id: doc.id, ...data };
-    predictions.push(prediction);
-    if (!predictionsByGame.has(prediction.gameId)) {
-      predictionsByGame.set(prediction.gameId, []);
-    }
-    predictionsByGame.get(prediction.gameId).push(prediction);
-  });
+  const visibleGames = games.filter(game => canPublishGamePredictions(game, syncedAt));
+  for (const game of visibleGames) {
+    const predictionsSnapshot = await db
+      .collection("predictions")
+      .where("gameId", "==", game.id)
+      .get();
+
+    predictionsSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.tournamentId !== config.tournamentId) return;
+      const prediction = { id: doc.id, ...data };
+      predictions.push(prediction);
+      if (!predictionsByGame.has(prediction.gameId)) {
+        predictionsByGame.set(prediction.gameId, []);
+      }
+      predictionsByGame.get(prediction.gameId).push(prediction);
+    });
+  }
 
   const playerStats = calculatePublicPlayerStats(games, predictions);
   const userNames = buildPublicUserNames(predictions);
@@ -714,15 +758,15 @@ async function updatePublicCache(db, config, syncedAt) {
   });
 
   let resultGames = 0;
-  games
-    .filter(game => normalizeGameStatusForScoring(game) === "finished")
+  visibleGames
     .forEach(game => {
+      const publicStatus = getPublicGameStatus(game, syncedAt);
       const resultPredictions = (predictionsByGame.get(game.id) || []).map(prediction => ({
         userId: prediction.userId || "unknown",
         playerName: prediction.playerName || "Anónimo",
         predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
         predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
-        points: calculatePredictionPoints(prediction, game)
+        points: publicStatus === "finished" ? calculatePredictionPoints(prediction, game) : null
       }));
 
       const ref = db.collection("public_results").doc(`${config.tournamentId}_${game.id}`);
@@ -740,7 +784,7 @@ async function updatePublicCache(db, config, syncedAt) {
           Group: game.Group,
           Matchday: game.Matchday,
           StageKey: game.StageKey,
-          status: "finished"
+          status: publicStatus
         },
         predictions: resultPredictions
       });
@@ -753,6 +797,65 @@ async function updatePublicCache(db, config, syncedAt) {
     leaderboardPlayers: players.length,
     resultGames,
     skipped: false
+  };
+}
+
+async function updateStartedPublicResults(db, config, syncedAt, games) {
+  if (!Array.isArray(games) || games.length === 0) {
+    return { leaderboardPlayers: 0, resultGames: 0, skipped: true, partial: true };
+  }
+
+  const batch = db.batch();
+  let resultGames = 0;
+
+  for (const game of games) {
+    const predictionsSnapshot = await db
+      .collection("predictions")
+      .where("gameId", "==", game.id)
+      .get();
+
+    const resultPredictions = [];
+    predictionsSnapshot.forEach(doc => {
+      const prediction = doc.data();
+      if (prediction.tournamentId !== config.tournamentId) return;
+      resultPredictions.push({
+        userId: prediction.userId || "unknown",
+        playerName: prediction.playerName || "Anónimo",
+        predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
+        predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
+        points: null
+      });
+    });
+
+    const ref = db.collection("public_results").doc(`${config.tournamentId}_${game.id}`);
+    batch.set(ref, {
+      tournamentId: config.tournamentId,
+      generatedAt: syncedAt,
+      game: {
+        id: game.id,
+        HomeTeam: game.HomeTeam,
+        AwayTeam: game.AwayTeam,
+        HomeScore: null,
+        AwayScore: null,
+        KickOffTime: game.KickOffTime,
+        Stage: game.Stage,
+        Group: game.Group,
+        Matchday: game.Matchday,
+        StageKey: game.StageKey,
+        status: "live"
+      },
+      predictions: resultPredictions
+    });
+    resultGames += 1;
+  }
+
+  await batch.commit();
+
+  return {
+    leaderboardPlayers: 0,
+    resultGames,
+    skipped: false,
+    partial: true
   };
 }
 
@@ -880,6 +983,31 @@ function normalizeGameStatusForScoring(game) {
   if (normalized === "in_play") return "live";
   if (normalized === "scheduled") return "upcoming";
   return normalized;
+}
+
+function getPublicResultStatus(snap) {
+  if (!snap.exists) return null;
+  const data = snap.data() || {};
+  return normalizeGameStatusForScoring(data.game || data);
+}
+
+function canPublishGamePredictions(game, syncedAt) {
+  const status = normalizeGameStatusForScoring(game);
+  return status === "finished" || status === "live" || hasGameStartedForCache(game, syncedAt);
+}
+
+function getPublicGameStatus(game, syncedAt) {
+  const status = normalizeGameStatusForScoring(game);
+  if (status === "finished") return "finished";
+  if (status === "live" || hasGameStartedForCache(game, syncedAt)) return "live";
+  return "upcoming";
+}
+
+function hasGameStartedForCache(game, syncedAt) {
+  const kickoffMs = toMillis(game.KickOffTime || game.utcDate);
+  if (!kickoffMs) return false;
+  const syncedMs = syncedAt?.toMillis ? syncedAt.toMillis() : toMillis(syncedAt);
+  return kickoffMs <= syncedMs;
 }
 
 function buildStageKeyForCache(game) {

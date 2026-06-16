@@ -365,12 +365,15 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
     thead.appendChild(headerRow);
 
     const tbody = document.createElement('tbody');
+    const isClickable = typeof onPlayerClick === 'function';
 
     sortedPlayers.forEach(([userId, stats], index) => {
         const row = document.createElement('tr');
-        row.style.cursor = 'pointer';
-        row.dataset.userId = userId;
-        row.title = 'Ver historial de predicciones';
+        if (isClickable) {
+            row.style.cursor = 'pointer';
+            row.dataset.userId = userId;
+            row.title = 'Ver historial de predicciones';
+        }
 
         const rankCell = document.createElement('th');
         rankCell.scope = 'row';
@@ -413,15 +416,15 @@ export function renderLeaderboardTable(sortedPlayers, userNames, onPlayerClick) 
     table.appendChild(thead);
     table.appendChild(tbody);
 
-    // Add click handler to table using event delegation
-    table.addEventListener('click', (e) => {
-        const row = e.target.closest('tr[data-user-id]');
-        if (row && onPlayerClick) {
-            const userId = row.getAttribute('data-user-id');
-            console.log('Row clicked! UserId:', userId);
-            onPlayerClick(userId);
-        }
-    });
+    if (isClickable) {
+        table.addEventListener('click', (e) => {
+            const row = e.target.closest('tr[data-user-id]');
+            if (row) {
+                const userId = row.getAttribute('data-user-id');
+                onPlayerClick(userId);
+            }
+        });
+    }
 
     return table;
 }

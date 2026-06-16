@@ -48,19 +48,6 @@
         </div>
     </div>
 
-    <!-- Player History Modal -->
-    <div id="player-history-modal" class="player-history-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="player-history-title">Historial del jugador</h3>
-                <span class="close-modal" style="cursor: pointer;" onclick="document.getElementById('player-history-modal').style.display = 'none';">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="player-history-content"></div>
-            </div>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
 
     <script type="module">
@@ -71,7 +58,7 @@
         import { calculatePoints, calculatePlayerStats, sortPlayersByStats } from "./js/calculations.js?v=edmonton-time-1";
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
         import { ADMIN_UID } from "./js/app-config.js?v=edmonton-time-1";
-        import { renderLeaderboardTable, createPlayerHistoryModal, openPlayerHistory, setupPlayerClickHandlers } from "./js/ui-helpers.js?v=history-privacy-1";
+        import { renderLeaderboardTable } from "./js/ui-helpers.js?v=no-player-click-1";
         import { TOURNAMENT_CONFIG, resolveStageLabel, formatTournamentDateTime } from "./js/tournament-config.js?v=edmonton-time-1";
 
         mountNavbar({ activeKey: "leaderboard" });
@@ -83,8 +70,6 @@
         const overallLeaderboardContainer = document.getElementById('overall-leaderboard-container');
         const leaderboardList = document.getElementById('leaderboard-list');
 
-        // Store user display names for modal
-        let userDisplayNamesGlobal = {};
         const statusLabelMap = {
             finished: 'Finalizado',
             live: 'En vivo',
@@ -97,14 +82,6 @@
             in_play: 'ongoing',
             upcoming: 'upcoming'
         };
-
-        // Create player history modal on page load
-        createPlayerHistoryModal();
-
-        // Setup global player click handler
-        setupPlayerClickHandlers((userId) => {
-            openPlayerHistory(userId, db, userDisplayNamesGlobal);
-        });
 
         loadSyncStatus();
 
@@ -133,6 +110,63 @@
             return normalized;
         }
 
+        function getGameTimeMillis(game) {
+            const raw = game?.KickOffTime?.toDate?.() ? game.KickOffTime.toDate() : game?.KickOffTime;
+            const time = raw ? new Date(raw).getTime() : NaN;
+            return Number.isNaN(time) ? null : time;
+        }
+
+        function hasGameStarted(game) {
+            const kickoff = getGameTimeMillis(game);
+            return kickoff !== null && kickoff <= Date.now();
+        }
+
+        function canShowGamePredictions(game) {
+            const status = getGameStatus(game);
+            return status === 'finished' || status === 'live' || status === 'in_play' || hasGameStarted(game);
+        }
+
+        function getVisibleGameStatus(game) {
+            const status = getGameStatus(game);
+            if (status === 'finished') return 'finished';
+            if (canShowGamePredictions(game)) return 'live';
+            return status;
+        }
+
+        function renderPredictionEntry(prediction, game, showPoints) {
+            let pointsDisplay = '';
+            let pointsClass = 'text-muted';
+            const predictedHome = prediction.predictedHomeScore ?? '-';
+            const predictedAway = prediction.predictedAwayScore ?? '-';
+
+            if (showPoints) {
+                const points = prediction.points !== undefined ? prediction.points : calculatePoints(prediction, game);
+                if (points === null || points === undefined) {
+                    pointsDisplay = 'N/A';
+                    pointsClass = 'pending';
+                } else if (points === 10) {
+                    pointsDisplay = `(${points} puntos - perfecto)`;
+                    pointsClass = 'text-success';
+                } else if (points >= 5) {
+                    pointsDisplay = `(${points} puntos)`;
+                    pointsClass = 'text-info';
+                } else if (points > 0) {
+                    pointsDisplay = `(${points} puntos)`;
+                    pointsClass = 'text-warning';
+                } else {
+                    pointsDisplay = `(${points} puntos)`;
+                    pointsClass = 'text-danger';
+                }
+            }
+
+            return `
+                <div class="prediction-entry">
+                    <span><strong>${escapeHtml(prediction.playerName || 'Anonimo')}</strong> predijo: ${escapeHtml(predictedHome)} - ${escapeHtml(predictedAway)}</span>
+                    ${showPoints ? `<span class="score ${pointsClass}">${pointsDisplay}</span>` : ''}
+                </div>
+            `;
+        }
+
         async function getFreshDoc(docRef) {
             try {
                 return await getDocFromServer(docRef);
@@ -151,6 +185,11 @@
                 if (loadedFromCache) {
                     return;
                 }
+
+                overallLeaderboardContainer.style.display = 'block';
+                leaderboardList.innerHTML = '<p class="text-center text-muted">La tabla se actualiza automaticamente cuando se genera la cache publica.</p>';
+                allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Los resultados visibles se publican cuando el partido empieza o termina.</p>';
+                return;
 
                 // 1. Fetch all games
                 const gamesSnapshot = await getDocs(query(
@@ -188,9 +227,6 @@
                     userNames[userId] = playerName;
                 });
 
-                // Store for global access in modals
-                userDisplayNamesGlobal = userNames;
-
                 // 5. Render the overall leaderboard using ui-helpers
                 renderLeaderboardContainer(playerStats, userNames, predictions);
 
@@ -202,15 +238,15 @@
                     return;
                 }
 
-                // Show only finished games, newest first.
-                const sortedGames = [...games].filter(game => getGameStatus(game) === 'finished').sort((a, b) => {
+                // Show games whose predictions are public: finished, live, or already started.
+                const sortedGames = [...games].filter(canShowGamePredictions).sort((a, b) => {
                     const dateA = a.KickOffTime && a.KickOffTime.toDate ? a.KickOffTime.toDate() : new Date(a.KickOffTime);
                     const dateB = b.KickOffTime && b.KickOffTime.toDate ? b.KickOffTime.toDate() : new Date(b.KickOffTime);
                     return dateB - dateA;
                 });
 
                 if (sortedGames.length === 0) {
-                    allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Todavia no hay partidos terminados.</p>';
+                    allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Todavia no hay partidos con predicciones visibles.</p>';
                     return;
                 }
 
@@ -222,15 +258,15 @@
                     // Get predictions for this game
                     const gamePredictions = predictions.filter(p => p.gameId === game.id);
 
-                    const statusValue = getGameStatus(game);
+                    const statusValue = getVisibleGameStatus(game);
                     const statusLabel = statusLabelMap[statusValue] || statusValue;
                     const statusClass = statusClassMap[statusValue] || 'upcoming';
                     const hasFinalScore = game.HomeScore !== null && game.AwayScore !== null;
-                    const actualResultDisplay = (statusValue === 'finished' || statusValue === 'live' || statusValue === 'in_play') && hasFinalScore
+                    const legacyActualResultDisplay = statusValue === 'finished' && hasFinalScore
                         ? `<p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>`
                         : `<p class="actual-result">Resultado real: Aún no disponible</p>`;
 
-                    const predictionsHTML = (statusValue === 'finished' || statusValue === 'live' || statusValue === 'in_play')
+                    const legacyPredictionsHTML = (statusValue === 'finished' || statusValue === 'live' || statusValue === 'in_play')
                         ? gamePredictions.length > 0
                             ? gamePredictions.map(prediction => {
                                 const points = calculatePoints(prediction, game);
@@ -265,6 +301,13 @@
                             }).join('')
                             : '<p class="text-muted">Todavía no hay predicciones para este partido.</p>'
                         : '<p class="text-muted">Las predicciones se muestran cuando finaliza el partido.</p>';
+
+                    const actualResultDisplay = statusValue === 'finished' && hasFinalScore
+                        ? `<p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>`
+                        : `<p class="actual-result">Resultado real: pendiente</p>`;
+                    const predictionsHTML = gamePredictions.length > 0
+                        ? gamePredictions.map(prediction => renderPredictionEntry(prediction, game, statusValue === 'finished')).join('')
+                        : '<p class="text-muted">Todavia no hay predicciones para este partido.</p>';
 
                     const phaseLabel = resolveStageLabel(game);
                     const kickoffLabel = game.KickOffTime ? formatTournamentDateTime(game.KickOffTime) : 'Fecha por confirmar';
@@ -313,7 +356,6 @@
                 players.forEach(player => {
                     userNames[player.userId] = player.playerName || 'AnÃ³nimo';
                 });
-                userDisplayNamesGlobal = userNames;
                 renderSortedLeaderboardContainer(sortedPlayers, userNames);
 
                 const resultsSnapshot = await getDocs(query(
@@ -337,7 +379,7 @@
         function renderCachedGameResults(resultDocs) {
             allGamesResultsContainer.innerHTML = '';
             const sortedResults = resultDocs
-                .filter(result => result.game && getGameStatus(result.game) === 'finished')
+                .filter(result => result.game && canShowGamePredictions(result.game))
                 .sort((a, b) => {
                     const dateA = a.game.KickOffTime && a.game.KickOffTime.toDate ? a.game.KickOffTime.toDate() : new Date(a.game.KickOffTime);
                     const dateB = b.game.KickOffTime && b.game.KickOffTime.toDate ? b.game.KickOffTime.toDate() : new Date(b.game.KickOffTime);
@@ -345,7 +387,7 @@
                 });
 
             if (sortedResults.length === 0) {
-                allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Todavia no hay partidos terminados.</p>';
+                allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Todavia no hay partidos con predicciones visibles.</p>';
                 return;
             }
 
@@ -355,39 +397,12 @@
                 const gameCard = document.createElement('div');
                 gameCard.classList.add('game-results-card', 'app-card');
 
+                const statusValue = getVisibleGameStatus(game);
+                const statusLabel = statusLabelMap[statusValue] || statusValue;
+                const statusClass = statusClassMap[statusValue] || 'upcoming';
                 const predictionsHTML = gamePredictions.length > 0
-                    ? gamePredictions.map(prediction => {
-                        const points = prediction.points;
-                        let pointsDisplay = '';
-                        let pointsClass = 'text-muted';
-                        const predictedHome = prediction.predictedHomeScore ?? '-';
-                        const predictedAway = prediction.predictedAwayScore ?? '-';
-
-                        if (points === null || points === undefined) {
-                            pointsDisplay = 'N/A';
-                            pointsClass = 'pending';
-                        } else if (points === 10) {
-                            pointsDisplay = `(${points} puntos - perfecto)`;
-                            pointsClass = 'text-success';
-                        } else if (points >= 5) {
-                            pointsDisplay = `(${points} puntos)`;
-                            pointsClass = 'text-info';
-                        } else if (points > 0) {
-                            pointsDisplay = `(${points} puntos)`;
-                            pointsClass = 'text-warning';
-                        } else {
-                            pointsDisplay = `(${points} puntos)`;
-                            pointsClass = 'text-danger';
-                        }
-
-                        return `
-                            <div class="prediction-entry">
-                                <span><strong>${escapeHtml(prediction.playerName || 'AnÃ³nimo')}</strong> predijo: ${escapeHtml(predictedHome)} - ${escapeHtml(predictedAway)}</span>
-                                <span class="score ${pointsClass}">${pointsDisplay}</span>
-                            </div>
-                        `;
-                    }).join('')
-                    : '<p class="text-muted">TodavÃ­a no hay predicciones para este partido.</p>';
+                    ? gamePredictions.map(prediction => renderPredictionEntry(prediction, game, statusValue === 'finished')).join('')
+                    : '<p class="text-muted">Todavia no hay predicciones para este partido.</p>';
 
                 const phaseLabel = resolveStageLabel(game);
                 const kickoffLabel = game.KickOffTime ? formatTournamentDateTime(game.KickOffTime) : 'Fecha por confirmar';
@@ -395,10 +410,12 @@
                 gameCard.innerHTML = `
                     <h3 class="game-header">
                         ${escapeHtml(game.HomeTeam)} vs ${escapeHtml(game.AwayTeam)}
-                        <span class="game-status finished">Finalizado</span>
+                        <span class="game-status ${statusClass}">${statusLabel}</span>
                     </h3>
                     <p class="game-info">${phaseLabel} - ${kickoffLabel}</p>
-                    <p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>
+                    ${statusValue === 'finished'
+                        ? `<p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>`
+                        : '<p class="actual-result">Resultado real: pendiente</p>'}
                     <hr>
                     <details class="predictions-toggle">
                         <summary>Ver predicciones de todos (${gamePredictions.length})</summary>
@@ -423,10 +440,7 @@
                 return;
             }
 
-            // Use ui-helpers to render the table with click handler callback
-            const table = renderLeaderboardTable(sortedPlayers, userNames, (userId) => {
-                openPlayerHistory(userId, db, userDisplayNamesGlobal);
-            });
+            const table = renderLeaderboardTable(sortedPlayers, userNames);
             leaderboardList.appendChild(table);
         }
 
@@ -439,9 +453,7 @@
                 return;
             }
 
-            const table = renderLeaderboardTable(sortedPlayers, userNames, (userId) => {
-                openPlayerHistory(userId, db, userDisplayNamesGlobal);
-            });
+            const table = renderLeaderboardTable(sortedPlayers, userNames);
             leaderboardList.appendChild(table);
         }
 
@@ -458,9 +470,9 @@
                 const data = statusSnap.exists() ? statusSnap.data() : {};
                 const lastSync = data.lastSuccessAt || data.lastSyncedAt || data.lastRunAt;
                 const lastText = lastSync ? formatTournamentDateTime(lastSync) : 'N/A';
-                banner.textContent = `Actualización automática post-partido (no en vivo). Última sync: ${lastText}`;
+                banner.textContent = `Actualizacion automatica de predicciones y resultados. Ultima sync: ${lastText}`;
             } catch (error) {
-                banner.textContent = 'Actualización automática post-partido (no en vivo).';
+                banner.textContent = 'Actualizacion automatica de predicciones y resultados.';
             }
         }
     </script>
