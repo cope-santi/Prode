@@ -147,6 +147,11 @@ async function run() {
       ? await syncTeamLogos(db, config, events)
       : { updated: 0, skipped: 0, missing: 0, total: 0 };
 
+    const shouldRefreshCache = writeCount > 0 || await isPublicCacheMissing(db, config);
+    const publicCacheStats = shouldRefreshCache
+      ? await updatePublicCache(db, config, now)
+      : { leaderboardPlayers: 0, resultGames: 0, skipped: true };
+
     await updateSyncStatus(db, config.tournamentId, {
       lastRunAt: now,
       lastSuccessAt: now,
@@ -161,14 +166,18 @@ async function run() {
       teamLogoUpdated: teamLogoStats.updated,
       teamLogoSkipped: teamLogoStats.skipped,
       teamLogoMissing: teamLogoStats.missing,
-      teamLogoTotal: teamLogoStats.total
+      teamLogoTotal: teamLogoStats.total,
+      publicCachePlayers: publicCacheStats.leaderboardPlayers,
+      publicCacheResultGames: publicCacheStats.resultGames,
+      publicCacheSkipped: !!publicCacheStats.skipped
     });
 
     console.log(
       `Sync summary: totalEvents=${events.length}, created=${created}, updated=${updated}, ` +
       `skippedManual=${skippedManual}, skippedUnchanged=${skippedUnchanged}, ` +
       `teamLogoUpdated=${teamLogoStats.updated}, teamLogoSkipped=${teamLogoStats.skipped}, ` +
-      `teamLogoMissing=${teamLogoStats.missing}`
+      `teamLogoMissing=${teamLogoStats.missing}, publicCachePlayers=${publicCacheStats.leaderboardPlayers}, ` +
+      `publicCacheResultGames=${publicCacheStats.resultGames}, publicCacheSkipped=${!!publicCacheStats.skipped}`
     );
   } catch (error) {
     const syncStatus = error.code === "rate_limit" ? "rate_limit" : "error";
@@ -652,6 +661,244 @@ async function releaseLock(db, tournamentId, lockId) {
 async function updateSyncStatus(db, tournamentId, payload) {
   const ref = db.collection("sync_status").doc(tournamentId);
   await ref.set(payload, { merge: true });
+}
+
+async function isPublicCacheMissing(db, config) {
+  const ref = db.collection("public_cache").doc(`${config.tournamentId}_leaderboard`);
+  const snap = await ref.get();
+  return !snap.exists;
+}
+
+async function updatePublicCache(db, config, syncedAt) {
+  const [gamesSnapshot, predictionsSnapshot] = await Promise.all([
+    db.collection("games").where("tournamentId", "==", config.tournamentId).get(),
+    db.collection("predictions").where("tournamentId", "==", config.tournamentId).get()
+  ]);
+
+  const games = [];
+  const predictions = [];
+  const predictionsByGame = new Map();
+
+  gamesSnapshot.forEach(doc => {
+    games.push({ id: doc.id, ...doc.data() });
+  });
+
+  predictionsSnapshot.forEach(doc => {
+    const data = doc.data();
+    const prediction = { id: doc.id, ...data };
+    predictions.push(prediction);
+    if (!predictionsByGame.has(prediction.gameId)) {
+      predictionsByGame.set(prediction.gameId, []);
+    }
+    predictionsByGame.get(prediction.gameId).push(prediction);
+  });
+
+  const playerStats = calculatePublicPlayerStats(games, predictions);
+  const userNames = buildPublicUserNames(predictions);
+  const players = sortPublicPlayers(playerStats, userNames).map(([userId, stats], index) => ({
+    rank: index + 1,
+    userId,
+    playerName: userNames[userId] || "Anónimo",
+    totalPoints: stats.totalPoints,
+    fechasWonCount: stats.fechasWonCount,
+    perfectScoresCount: stats.perfectScoresCount,
+    gamesParticipated: stats.gamesParticipated
+  }));
+
+  const batch = db.batch();
+  const leaderboardRef = db.collection("public_cache").doc(`${config.tournamentId}_leaderboard`);
+  batch.set(leaderboardRef, {
+    tournamentId: config.tournamentId,
+    generatedAt: syncedAt,
+    players
+  });
+
+  let resultGames = 0;
+  games
+    .filter(game => normalizeGameStatusForScoring(game) === "finished")
+    .forEach(game => {
+      const resultPredictions = (predictionsByGame.get(game.id) || []).map(prediction => ({
+        userId: prediction.userId || "unknown",
+        playerName: prediction.playerName || "Anónimo",
+        predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
+        predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
+        points: calculatePredictionPoints(prediction, game)
+      }));
+
+      const ref = db.collection("public_results").doc(`${config.tournamentId}_${game.id}`);
+      batch.set(ref, {
+        tournamentId: config.tournamentId,
+        generatedAt: syncedAt,
+        game: {
+          id: game.id,
+          HomeTeam: game.HomeTeam,
+          AwayTeam: game.AwayTeam,
+          HomeScore: game.HomeScore,
+          AwayScore: game.AwayScore,
+          KickOffTime: game.KickOffTime,
+          Stage: game.Stage,
+          Group: game.Group,
+          Matchday: game.Matchday,
+          StageKey: game.StageKey,
+          status: "finished"
+        },
+        predictions: resultPredictions
+      });
+      resultGames += 1;
+    });
+
+  await batch.commit();
+
+  return {
+    leaderboardPlayers: players.length,
+    resultGames,
+    skipped: false
+  };
+}
+
+function buildPublicUserNames(predictions) {
+  const latestByUser = new Map();
+  predictions.forEach(prediction => {
+    const userId = prediction.userId || "unknown";
+    const previous = latestByUser.get(userId);
+    const currentTime = toMillis(prediction.timestamp);
+    const previousTime = previous ? toMillis(previous.timestamp) : -1;
+    if (!previous || currentTime >= previousTime) {
+      latestByUser.set(userId, prediction);
+    }
+  });
+
+  const names = {};
+  latestByUser.forEach((prediction, userId) => {
+    names[userId] = prediction.playerName || "Anónimo";
+  });
+  return names;
+}
+
+function calculatePublicPlayerStats(games, predictions) {
+  const playerStats = {};
+  const stageScores = {};
+  const gameMap = new Map(games.map(game => [game.id, game]));
+
+  predictions.forEach(prediction => {
+    const userId = prediction.userId || "unknown";
+    if (!playerStats[userId]) {
+      playerStats[userId] = {
+        totalPoints: 0,
+        fechasWonCount: 0,
+        perfectScoresCount: 0,
+        gamesParticipated: 0
+      };
+    }
+  });
+
+  predictions.forEach(prediction => {
+    const userId = prediction.userId || "unknown";
+    const game = gameMap.get(prediction.gameId);
+    if (!game) return;
+
+    const points = calculatePredictionPoints(prediction, game);
+    if (points === null) return;
+
+    playerStats[userId].totalPoints += points;
+    playerStats[userId].gamesParticipated += 1;
+    if (points === 10) {
+      playerStats[userId].perfectScoresCount += 1;
+    }
+
+    const stageKey = game.StageKey || buildStageKeyForCache(game);
+    if (!stageKey) return;
+    if (!stageScores[stageKey]) {
+      stageScores[stageKey] = {};
+    }
+    stageScores[stageKey][userId] = (stageScores[stageKey][userId] || 0) + points;
+  });
+
+  Object.values(stageScores).forEach(playersInStage => {
+    const scores = Object.values(playersInStage);
+    if (scores.length === 0) return;
+    const maxScore = Math.max(...scores);
+    if (maxScore <= 0) return;
+    Object.entries(playersInStage).forEach(([userId, score]) => {
+      if (score === maxScore) {
+        playerStats[userId].fechasWonCount += 1;
+      }
+    });
+  });
+
+  return playerStats;
+}
+
+function sortPublicPlayers(playerStats, userNames) {
+  return Object.entries(playerStats).sort(([idA, statsA], [idB, statsB]) => {
+    if (statsB.totalPoints !== statsA.totalPoints) {
+      return statsB.totalPoints - statsA.totalPoints;
+    }
+    if (statsB.fechasWonCount !== statsA.fechasWonCount) {
+      return statsB.fechasWonCount - statsA.fechasWonCount;
+    }
+    if (statsB.perfectScoresCount !== statsA.perfectScoresCount) {
+      return statsB.perfectScoresCount - statsA.perfectScoresCount;
+    }
+    return String(userNames[idA] || idA).localeCompare(String(userNames[idB] || idB));
+  });
+}
+
+function calculatePredictionPoints(prediction, game) {
+  const gameStatus = normalizeGameStatusForScoring(game);
+  const actualHome = normalizeScore(game.HomeScore !== undefined ? game.HomeScore : game.homeScore);
+  const actualAway = normalizeScore(game.AwayScore !== undefined ? game.AwayScore : game.awayScore);
+  if (gameStatus !== "finished" || actualHome === null || actualAway === null) {
+    return null;
+  }
+
+  const predictedHome = normalizeScore(prediction.predictedHomeScore);
+  const predictedAway = normalizeScore(prediction.predictedAwayScore);
+  if (predictedHome === null || predictedAway === null) {
+    return 0;
+  }
+
+  let points = 0;
+  const predictedOutcome = predictedHome > predictedAway ? "HW" : predictedHome < predictedAway ? "AW" : "D";
+  const actualOutcome = actualHome > actualAway ? "HW" : actualHome < actualAway ? "AW" : "D";
+  if (predictedOutcome === actualOutcome) points += 5;
+  if (predictedHome === actualHome) points += 2;
+  if (predictedAway === actualAway) points += 2;
+  if (Math.abs(predictedHome - predictedAway) === Math.abs(actualHome - actualAway)) points += 1;
+  return points;
+}
+
+function normalizeScore(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeGameStatusForScoring(game) {
+  const raw = game.status !== undefined && game.status !== null ? game.status : game.Status;
+  const normalized = String(raw || "").toLowerCase();
+  if (normalized === "in_play") return "live";
+  if (normalized === "scheduled") return "upcoming";
+  return normalized;
+}
+
+function buildStageKeyForCache(game) {
+  const stage = game.Stage || game.stage;
+  if (!stage) return null;
+  if (stage === "GROUP") {
+    const group = game.Group || game.group;
+    const matchday = game.Matchday || game.matchday;
+    if (!group || !matchday) return null;
+    return `GROUP-${group}-MD${matchday}`;
+  }
+  return stage;
+}
+
+function toMillis(value) {
+  if (!value) return 0;
+  if (value.toMillis) return value.toMillis();
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 run().catch(error => {

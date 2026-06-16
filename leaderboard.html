@@ -147,6 +147,11 @@
             allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Cargando resultados y predicciones...</p>';
 
             try {
+                const loadedFromCache = await loadPublicCacheResults();
+                if (loadedFromCache) {
+                    return;
+                }
+
                 // 1. Fetch all games
                 const gamesSnapshot = await getDocs(query(
                     collection(db, 'games'),
@@ -288,6 +293,124 @@
             }
         }
 
+        async function loadPublicCacheResults() {
+            try {
+                const leaderboardRef = doc(db, 'public_cache', `${TOURNAMENT_CONFIG.tournamentId}_leaderboard`);
+                const leaderboardSnap = await getDoc(leaderboardRef);
+                if (!leaderboardSnap.exists()) {
+                    return false;
+                }
+
+                const leaderboardData = leaderboardSnap.data();
+                const players = Array.isArray(leaderboardData.players) ? leaderboardData.players : [];
+                const sortedPlayers = players.map(player => [player.userId, {
+                    totalPoints: player.totalPoints || 0,
+                    fechasWonCount: player.fechasWonCount || 0,
+                    perfectScoresCount: player.perfectScoresCount || 0,
+                    gamesParticipated: player.gamesParticipated || 0
+                }]);
+                const userNames = {};
+                players.forEach(player => {
+                    userNames[player.userId] = player.playerName || 'AnÃ³nimo';
+                });
+                userDisplayNamesGlobal = userNames;
+                renderSortedLeaderboardContainer(sortedPlayers, userNames);
+
+                const resultsSnapshot = await getDocs(query(
+                    collection(db, 'public_results'),
+                    where('tournamentId', '==', TOURNAMENT_CONFIG.tournamentId)
+                ));
+
+                const resultDocs = [];
+                resultsSnapshot.forEach(resultDoc => {
+                    resultDocs.push(resultDoc.data());
+                });
+
+                renderCachedGameResults(resultDocs);
+                return true;
+            } catch (error) {
+                console.warn('No se pudo cargar cache publica, usando datos originales:', error);
+                return false;
+            }
+        }
+
+        function renderCachedGameResults(resultDocs) {
+            allGamesResultsContainer.innerHTML = '';
+            const sortedResults = resultDocs
+                .filter(result => result.game && getGameStatus(result.game) === 'finished')
+                .sort((a, b) => {
+                    const dateA = a.game.KickOffTime && a.game.KickOffTime.toDate ? a.game.KickOffTime.toDate() : new Date(a.game.KickOffTime);
+                    const dateB = b.game.KickOffTime && b.game.KickOffTime.toDate ? b.game.KickOffTime.toDate() : new Date(b.game.KickOffTime);
+                    return dateB - dateA;
+                });
+
+            if (sortedResults.length === 0) {
+                allGamesResultsContainer.innerHTML = '<p class="text-center text-muted">Todavia no hay partidos terminados.</p>';
+                return;
+            }
+
+            sortedResults.forEach(result => {
+                const game = result.game;
+                const gamePredictions = Array.isArray(result.predictions) ? result.predictions : [];
+                const gameCard = document.createElement('div');
+                gameCard.classList.add('game-results-card', 'app-card');
+
+                const predictionsHTML = gamePredictions.length > 0
+                    ? gamePredictions.map(prediction => {
+                        const points = prediction.points;
+                        let pointsDisplay = '';
+                        let pointsClass = 'text-muted';
+                        const predictedHome = prediction.predictedHomeScore ?? '-';
+                        const predictedAway = prediction.predictedAwayScore ?? '-';
+
+                        if (points === null || points === undefined) {
+                            pointsDisplay = 'N/A';
+                            pointsClass = 'pending';
+                        } else if (points === 10) {
+                            pointsDisplay = `(${points} puntos - perfecto)`;
+                            pointsClass = 'text-success';
+                        } else if (points >= 5) {
+                            pointsDisplay = `(${points} puntos)`;
+                            pointsClass = 'text-info';
+                        } else if (points > 0) {
+                            pointsDisplay = `(${points} puntos)`;
+                            pointsClass = 'text-warning';
+                        } else {
+                            pointsDisplay = `(${points} puntos)`;
+                            pointsClass = 'text-danger';
+                        }
+
+                        return `
+                            <div class="prediction-entry">
+                                <span><strong>${escapeHtml(prediction.playerName || 'AnÃ³nimo')}</strong> predijo: ${escapeHtml(predictedHome)} - ${escapeHtml(predictedAway)}</span>
+                                <span class="score ${pointsClass}">${pointsDisplay}</span>
+                            </div>
+                        `;
+                    }).join('')
+                    : '<p class="text-muted">TodavÃ­a no hay predicciones para este partido.</p>';
+
+                const phaseLabel = resolveStageLabel(game);
+                const kickoffLabel = game.KickOffTime ? formatTournamentDateTime(game.KickOffTime) : 'Fecha por confirmar';
+
+                gameCard.innerHTML = `
+                    <h3 class="game-header">
+                        ${escapeHtml(game.HomeTeam)} vs ${escapeHtml(game.AwayTeam)}
+                        <span class="game-status finished">Finalizado</span>
+                    </h3>
+                    <p class="game-info">${phaseLabel} - ${kickoffLabel}</p>
+                    <p class="actual-result">Resultado real: ${game.HomeScore} - ${game.AwayScore}</p>
+                    <hr>
+                    <details class="predictions-toggle">
+                        <summary>Ver predicciones de todos (${gamePredictions.length})</summary>
+                        <div class="predictions-list mt-3">
+                            ${predictionsHTML}
+                        </div>
+                    </details>
+                `;
+                allGamesResultsContainer.appendChild(gameCard);
+            });
+        }
+
         // --- Render Overall Leaderboard ---
         function renderLeaderboardContainer(playerStats, userNames, predictions) {
             leaderboardList.innerHTML = '';
@@ -301,6 +424,21 @@
             }
 
             // Use ui-helpers to render the table with click handler callback
+            const table = renderLeaderboardTable(sortedPlayers, userNames, (userId) => {
+                openPlayerHistory(userId, db, userDisplayNamesGlobal);
+            });
+            leaderboardList.appendChild(table);
+        }
+
+        function renderSortedLeaderboardContainer(sortedPlayers, userNames) {
+            leaderboardList.innerHTML = '';
+            overallLeaderboardContainer.style.display = 'block';
+
+            if (sortedPlayers.length === 0) {
+                leaderboardList.innerHTML = '<p class="text-center text-muted">No total scores to display yet.</p>';
+                return;
+            }
+
             const table = renderLeaderboardTable(sortedPlayers, userNames, (userId) => {
                 openPlayerHistory(userId, db, userDisplayNamesGlobal);
             });
