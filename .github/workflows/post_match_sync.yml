@@ -2,12 +2,17 @@ name: Post Match Sync
 
 on:
   schedule:
-    - cron: "2-59/5 * * * *"
+    - cron: "17,47 * * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: post-match-sync
+  cancel-in-progress: false
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -30,7 +35,7 @@ jobs:
           THESPORTSDB_LEAGUE_ID: ${{ secrets.THESPORTSDB_LEAGUE_ID }}
           THESPORTSDB_SEASON: ${{ secrets.THESPORTSDB_SEASON }}
           THESPORTSDB_ROUNDS: ${{ secrets.THESPORTSDB_ROUNDS }}
-          SYNC_TEAM_LOGOS: ${{ secrets.SYNC_TEAM_LOGOS || secrets.SYNC_TEAM_LOGO }}
+          SYNC_TEAM_LOGOS: ${{ secrets.SYNC_TEAM_LOGOS || secrets.SYNC_TEAM_LOGO || 'false' }}
           FORCE_TEAM_LOGOS: ${{ secrets.FORCE_TEAM_LOGOS }}
           TOURNAMENT_ID: ${{ secrets.TOURNAMENT_ID }}
           LOOKBACK_DAYS: ${{ secrets.LOOKBACK_DAYS }}

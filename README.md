@@ -60,8 +60,8 @@ Tip: crear un service account en Firebase Console, descargar el JSON y pegarlo c
 
 ### Workflow
 
-* `.github/workflows/post_match_sync.yml` corre cada 10 minutos y permite ejecucion manual.
-* Para cambiar la frecuencia, editar el cron del workflow (por ejemplo a 15 minutos).
+* `.github/workflows/post_match_sync.yml` corre dos veces por hora y permite ejecucion manual.
+* Para cambiar la frecuencia, editar el cron del workflow. En plan gratis conviene evitar intervalos muy agresivos para no agotar la cuota diaria de Firestore.
 * Usa 2 requests por corrida (eventos pasados + proximos).
 * Solo escribe scores cuando el partido esta FINISHED.
 
