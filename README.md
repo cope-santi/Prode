@@ -62,7 +62,7 @@ Tip: crear un service account en Firebase Console, descargar el JSON y pegarlo c
 
 * `.github/workflows/post_match_sync.yml` corre cerca del inicio estimado de cada partido para publicar predicciones, y cerca del final estimado para aplicar puntos.
 * Para cambiar la frecuencia, editar el cron del workflow. En plan gratis conviene evitar intervalos muy agresivos para no agotar la cuota diaria de Firestore.
-* Usa 2 requests por corrida (eventos pasados + proximos).
+* Usa las consultas de temporada/ronda y, para partidos ya empezados que todavia no figuran como finalizados, refresca tambien por `idEvent` para evitar resultados atrasados.
 * Solo escribe scores cuando el partido esta FINISHED.
 * Cuando hay cambios reales, recalcula `public_cache` y `public_results` para que la UI no lea todas las predicciones en cada visita.
 

@@ -59,7 +59,7 @@ async function run() {
 
   const now = admin.firestore.Timestamp.now();
   try {
-    const events = await loadEvents(config);
+    let events = await loadEvents(config);
 
     const snapshot = await db
       .collection("games")
@@ -80,6 +80,8 @@ async function run() {
         byMatchKey.set(matchKey, doc);
       }
     });
+
+    events = await enrichEventsWithDirectLookups(config, events, existingGames, now);
 
     const maxBatchSize = 450;
     let batch = db.batch();
@@ -265,6 +267,13 @@ async function fetchRoundEvents(config, round) {
   const roundParam = String(round || "").trim();
   const url = `${baseUrl}/${config.apiKey}/eventsround.php?id=${config.leagueId}&s=${encodeURIComponent(season)}&r=${encodeURIComponent(roundParam)}`;
   return fetchWithCache(url, `round_${roundParam}`, config.cacheTtlMs);
+}
+
+async function fetchEventById(config, eventId) {
+  const baseUrl = "https://www.thesportsdb.com/api/v1/json";
+  const id = String(eventId || "").trim();
+  const url = `${baseUrl}/${config.apiKey}/lookupevent.php?id=${encodeURIComponent(id)}`;
+  return fetchWithCache(url, `event_${id}`, config.cacheTtlMs);
 }
 
 async function loadEvents(config) {
@@ -559,6 +568,50 @@ function sanitizePayload(payload, existingData) {
   }
 
   return sanitized;
+}
+
+async function enrichEventsWithDirectLookups(config, events, existingGames, syncedAt) {
+  const ids = Array.from(new Set(
+    (existingGames || [])
+      .filter(game => needsDirectEventRefresh(game, syncedAt, config.lookbackDays))
+      .map(game => String(game.externalMatchId || "").trim())
+      .filter(Boolean)
+  ));
+
+  if (ids.length === 0) {
+    return events;
+  }
+
+  const directEvents = [];
+  for (const id of ids) {
+    try {
+      const matches = await fetchEventById(config, id);
+      directEvents.push(...matches);
+    } catch (error) {
+      console.warn(`Direct event refresh failed for ${id}: ${error.message || error}`);
+    }
+  }
+
+  console.log(`Direct event refresh: attempted=${ids.length}, returned=${directEvents.length}`);
+  return mergeEvents(events, directEvents);
+}
+
+function needsDirectEventRefresh(game, syncedAt, lookbackDays) {
+  if (!game || game.externalProvider !== "thesportsdb" || !game.externalMatchId) {
+    return false;
+  }
+  if (normalizeGameStatusForScoring(game) === "finished") {
+    return false;
+  }
+
+  const kickoffMs = toMillis(game.KickOffTime || game.utcDate);
+  const syncedMs = syncedAt?.toMillis ? syncedAt.toMillis() : toMillis(syncedAt);
+  if (!kickoffMs || !syncedMs || kickoffMs > syncedMs) {
+    return false;
+  }
+
+  const refreshWindowDays = Math.max(Number(lookbackDays) || 2, 2) + 2;
+  return kickoffMs >= syncedMs - refreshWindowDays * 24 * 60 * 60 * 1000;
 }
 
 function hasChanges(payload, existingData) {
