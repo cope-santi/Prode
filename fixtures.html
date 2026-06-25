@@ -508,6 +508,13 @@
             saveTimers.set(gameId, setTimeout(() => savePredictionForGame(gameId), 450));
         }
 
+        function preventScoreWheelChange(event) {
+            const input = event.target.closest('.score-input');
+            if (!input) return;
+            input.blur();
+            event.preventDefault();
+        }
+
         async function savePredictionForGame(gameId) {
             if (!currentUserId) return;
             const game = allGames.find(item => item.id === gameId);
@@ -556,6 +563,8 @@
 
         gameListDiv.addEventListener('change', handleScoreChange);
         knockoutView.addEventListener('change', handleScoreChange);
+        gameListDiv.addEventListener('wheel', preventScoreWheelChange, { passive: false });
+        knockoutView.addEventListener('wheel', preventScoreWheelChange, { passive: false });
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
