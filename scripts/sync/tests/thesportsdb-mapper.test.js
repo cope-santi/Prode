@@ -70,6 +70,28 @@ assert.equal(mappedR32.Group, null);
 assert.equal(mappedR32.Matchday, null);
 assert.equal(mappedR32.StageKey, "R32");
 
+const aetEvent = {
+  ...r32Event,
+  idEvent: "790",
+  strStatus: "AET",
+  intHomeScore: "1",
+  intAwayScore: "0"
+};
+const mappedAet = mapEventToGame(aetEvent);
+assert.equal(mappedAet.status, "finished");
+assert.equal(mappedAet.providerStatus, "FINISHED");
+
+const penaltiesEvent = {
+  ...r32Event,
+  idEvent: "791",
+  strStatus: "PEN",
+  intHomeScore: "1",
+  intAwayScore: "1"
+};
+const mappedPenalties = mapEventToGame(penaltiesEvent);
+assert.equal(mappedPenalties.status, "finished");
+assert.equal(mappedPenalties.providerStatus, "FINISHED");
+
 const invalidGroupEvent = {
   idEvent: "999",
   strHomeTeam: "Spain",

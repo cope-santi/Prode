@@ -25,6 +25,7 @@ let adminKickOffTimeInput;
 let adminStatusSelect;
 let adminHomeScoreInput;
 let adminAwayScoreInput;
+let adminAdvancingTeamSelect;
 let adminManualOverrideInput;
 let addGameButton;
 let updateGameButton;
@@ -47,6 +48,51 @@ function getCanonicalStatus(game) {
     if (normalized === 'scheduled') return 'upcoming';
     if (normalized === 'in_play') return 'live';
     return normalized;
+}
+
+function isKnockoutStage(stage) {
+    return !!stage && !isGroupStage(stage);
+}
+
+function inferAdvancingTeam(homeScore, awayScore) {
+    if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore) || homeScore === awayScore) {
+        return null;
+    }
+    return homeScore > awayScore ? 'home' : 'away';
+}
+
+function getSelectedAdvancingTeam(stage) {
+    if (!adminAdvancingTeamSelect || !isKnockoutStage(stage)) return null;
+    const value = String(adminAdvancingTeamSelect.value || '').toLowerCase();
+    return value === 'home' || value === 'away' ? value : null;
+}
+
+function updateAdvancingTeamOptions(selectedValue) {
+    if (!adminAdvancingTeamSelect) return;
+    const stage = adminStageSelect ? adminStageSelect.value : '';
+    const homeTeam = adminHomeTeamInput ? adminHomeTeamInput.value.trim() : '';
+    const awayTeam = adminAwayTeamInput ? adminAwayTeamInput.value.trim() : '';
+    const enabled = isKnockoutStage(stage) && homeTeam && awayTeam;
+    const valueToKeep = selectedValue !== undefined ? selectedValue : adminAdvancingTeamSelect.value;
+
+    adminAdvancingTeamSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Automatico por marcador';
+    adminAdvancingTeamSelect.appendChild(defaultOption);
+
+    const homeOption = document.createElement('option');
+    homeOption.value = 'home';
+    homeOption.textContent = homeTeam ? `Clasifica ${homeTeam}` : 'Clasifica local';
+    adminAdvancingTeamSelect.appendChild(homeOption);
+
+    const awayOption = document.createElement('option');
+    awayOption.value = 'away';
+    awayOption.textContent = awayTeam ? `Clasifica ${awayTeam}` : 'Clasifica visitante';
+    adminAdvancingTeamSelect.appendChild(awayOption);
+
+    adminAdvancingTeamSelect.disabled = !enabled;
+    adminAdvancingTeamSelect.value = enabled && (valueToKeep === 'home' || valueToKeep === 'away') ? valueToKeep : '';
 }
 
 /**
@@ -79,6 +125,7 @@ export function initializeAdminPanel(database, addDoc, collection, updateDoc, do
     adminStatusSelect = document.getElementById('adminStatus');
     adminHomeScoreInput = document.getElementById('adminHomeScore');
     adminAwayScoreInput = document.getElementById('adminAwayScore');
+    adminAdvancingTeamSelect = document.getElementById('adminAdvancingTeam');
     adminManualOverrideInput = document.getElementById('adminManualOverride');
     addGameButton = document.getElementById('addGameButton');
     updateGameButton = document.getElementById('updateGameButton');
@@ -97,8 +144,14 @@ export function initializeAdminPanel(database, addDoc, collection, updateDoc, do
         loadGameButton.addEventListener('click', handleAdminGameLoad);
     }
     if (adminStageSelect) {
-        adminStageSelect.addEventListener('change', updateGroupMatchdayInputs);
+        adminStageSelect.addEventListener('change', () => {
+            updateGroupMatchdayInputs();
+            updateAdvancingTeamOptions();
+        });
     }
+    if (adminHomeTeamInput) adminHomeTeamInput.addEventListener('input', updateAdvancingTeamOptions);
+    if (adminAwayTeamInput) adminAwayTeamInput.addEventListener('input', updateAdvancingTeamOptions);
+    updateAdvancingTeamOptions();
 }
 
 /**
@@ -141,6 +194,10 @@ export async function handleAdminGameAdd() {
     }
     const providerStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
+    const selectedAdvancingTeam = getSelectedAdvancingTeam(stage);
+    const inferredAdvancingTeam = status === 'finished' && isKnockoutStage(stage)
+        ? (selectedAdvancingTeam || inferAdvancingTeam(homeScore, awayScore))
+        : null;
     // Basic validation
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
         gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
@@ -174,6 +231,12 @@ export async function handleAdminGameAdd() {
         addGameButton.disabled = false;
         return;
     }
+    if (status === 'finished' && isKnockoutStage(stage) && homeScore === awayScore && !selectedAdvancingTeam) {
+        gameMessageDiv.textContent = 'El partido empato: elegi quien clasifica para sumar el bonus.';
+        gameMessageDiv.style.color = 'red';
+        addGameButton.disabled = false;
+        return;
+    }
 
     try {
         const kickOffTime = new Date(kickOffTimeStr);
@@ -197,6 +260,7 @@ export async function handleAdminGameAdd() {
             Group: group,
             Matchday: matchday,
             StageKey: stageKey,
+            advancingTeam: inferredAdvancingTeam,
             isManuallyEdited: isManuallyEdited,
             syncStatus: 'manual',
             syncError: null,
@@ -299,6 +363,7 @@ export function loadGameIntoForm(game) {
     if (adminStatusSelect) adminStatusSelect.value = getCanonicalStatus(game);
     if (adminHomeScoreInput) adminHomeScoreInput.value = game.HomeScore ?? '';
     if (adminAwayScoreInput) adminAwayScoreInput.value = game.AwayScore ?? '';
+    updateAdvancingTeamOptions(game.advancingTeam || game.AdvancingTeam || '');
     if (adminManualOverrideInput) adminManualOverrideInput.checked = !!game.isManuallyEdited;
 }
 
@@ -331,6 +396,10 @@ export async function handleAdminGameUpdate() {
     }
     const providerStatus = status === 'finished' ? 'FINISHED' : status === 'live' ? 'IN_PLAY' : 'SCHEDULED';
     const isManuallyEdited = adminManualOverrideInput ? adminManualOverrideInput.checked : false;
+    const selectedAdvancingTeam = getSelectedAdvancingTeam(stage);
+    const inferredAdvancingTeam = status === 'finished' && isKnockoutStage(stage)
+        ? (selectedAdvancingTeam || inferAdvancingTeam(homeScore, awayScore))
+        : null;
 
     if (!homeTeam || !awayTeam || !stage || !kickOffTimeStr || !status) {
         gameMessageDiv.textContent = 'Please fill in all required fields (Teams, Stage, Kick-off Time, Status).';
@@ -364,6 +433,12 @@ export async function handleAdminGameUpdate() {
         updateGameButton.disabled = false;
         return;
     }
+    if (status === 'finished' && isKnockoutStage(stage) && homeScore === awayScore && !selectedAdvancingTeam) {
+        gameMessageDiv.textContent = 'El partido empato: elegi quien clasifica para sumar el bonus.';
+        gameMessageDiv.style.color = 'red';
+        updateGameButton.disabled = false;
+        return;
+    }
 
     try {
         const kickOffTime = new Date(kickOffTimeStr);
@@ -387,6 +462,7 @@ export async function handleAdminGameUpdate() {
             Group: group,
             Matchday: matchday,
             StageKey: stageKey,
+            advancingTeam: inferredAdvancingTeam,
             isManuallyEdited: isManuallyEdited,
             syncStatus: 'manual',
             syncError: null
@@ -448,10 +524,14 @@ function clearAdminForm() {
     }
     adminHomeScoreInput.value = "";
     adminAwayScoreInput.value = "";
+    if (adminAdvancingTeamSelect) {
+        adminAdvancingTeamSelect.value = "";
+    }
     if (adminManualOverrideInput) {
         adminManualOverrideInput.checked = false;
     }
     selectedGameId = null;
+    updateAdvancingTeamOptions();
 }
 
 function isValidScore(score) {

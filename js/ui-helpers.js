@@ -5,7 +5,7 @@
  */
 
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js?v=edmonton-time-1";
+import { calculatePoints, calculatePlayerStats, getPlayerStats, normalizePrediction } from "./calculations.js?v=knockout-advancer-1";
 import { TOURNAMENT_CONFIG, resolveStageKey, resolveStageLabel, formatTournamentShortDateTime } from "./tournament-config.js?v=edmonton-time-1";
 
 let cachedTournamentGames = null;
@@ -265,7 +265,7 @@ export async function openPlayerHistory(userId, db, userDisplayNames) {
             if (!game) return;
 
             const points = calculatePoints(pred, game);
-            const pointsClass = points === null ? 'pending' : points === 10 ? 'perfect' : points >= 7 ? 'high' : points >= 4 ? 'medium' : points > 0 ? 'low' : 'zero';
+            const pointsClass = points === null ? 'pending' : points >= 10 ? 'perfect' : points >= 7 ? 'high' : points >= 4 ? 'medium' : points > 0 ? 'low' : 'zero';
             const pointsDisplay = points === null ? 'N/A' : `${points}p`;
 
             const gameDate = formatTournamentShortDateTime(game.KickOffTime);

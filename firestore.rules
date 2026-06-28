@@ -26,7 +26,12 @@ service cloud.firestore {
         && request.resource.data.predictedHomeScore is int
         && request.resource.data.predictedAwayScore is int
         && request.resource.data.predictedHomeScore >= 0
-        && request.resource.data.predictedAwayScore >= 0;
+        && request.resource.data.predictedAwayScore >= 0
+        && (
+          !('predictedAdvancingTeam' in request.resource.data)
+          || request.resource.data.predictedAdvancingTeam == null
+          || request.resource.data.predictedAdvancingTeam in ['home', 'away']
+        );
     }
 
     match /games/{gameId} {

@@ -531,10 +531,12 @@ function buildPayload(mapped, config, now, isCreate) {
     payload.score = mapped.score;
     payload.HomeScore = mapped.HomeScore;
     payload.AwayScore = mapped.AwayScore;
+    payload.advancingTeam = getActualAdvancingTeam(payload);
   } else {
     payload.score = null;
     payload.HomeScore = null;
     payload.AwayScore = null;
+    payload.advancingTeam = null;
   }
 
   if (isCreate) {
@@ -561,6 +563,7 @@ function sanitizePayload(payload, existingData) {
     sanitized.score = null;
     sanitized.HomeScore = null;
     sanitized.AwayScore = null;
+    sanitized.advancingTeam = null;
   }
 
   if (!hasLegacyStatus) {
@@ -631,7 +634,8 @@ function hasChanges(payload, existingData) {
     "StageKey",
     "externalProvider",
     "externalMatchId",
-    "score"
+    "score",
+    "advancingTeam"
   ];
 
   return fields.some(field => {
@@ -819,6 +823,7 @@ async function updatePublicCache(db, config, syncedAt) {
         playerName: prediction.playerName || "Anónimo",
         predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
         predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
+        predictedAdvancingTeam: normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam),
         points: publicStatus === "finished" ? calculatePredictionPoints(prediction, game) : null
       }));
 
@@ -837,6 +842,7 @@ async function updatePublicCache(db, config, syncedAt) {
           Group: game.Group,
           Matchday: game.Matchday,
           StageKey: game.StageKey,
+          advancingTeam: game.advancingTeam || game.AdvancingTeam || null,
           status: publicStatus
         },
         predictions: resultPredictions
@@ -876,6 +882,7 @@ async function updateStartedPublicResults(db, config, syncedAt, games) {
         playerName: prediction.playerName || "Anónimo",
         predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
         predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
+        predictedAdvancingTeam: normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam),
         points: null
       });
     });
@@ -895,6 +902,7 @@ async function updateStartedPublicResults(db, config, syncedAt, games) {
         Group: game.Group,
         Matchday: game.Matchday,
         StageKey: game.StageKey,
+        advancingTeam: null,
         status: "live"
       },
       predictions: resultPredictions
@@ -955,10 +963,11 @@ function calculatePublicPlayerStats(games, predictions) {
 
     const points = calculatePredictionPoints(prediction, game);
     if (points === null) return;
+    const scorePoints = calculatePredictionScorePoints(prediction, game);
 
     playerStats[userId].totalPoints += points;
     playerStats[userId].gamesParticipated += 1;
-    if (points === 10) {
+    if (scorePoints === 10) {
       playerStats[userId].perfectScoresCount += 1;
     }
 
@@ -1001,6 +1010,12 @@ function sortPublicPlayers(playerStats, userNames) {
 }
 
 function calculatePredictionPoints(prediction, game) {
+  const scorePoints = calculatePredictionScorePoints(prediction, game);
+  if (scorePoints === null) return null;
+  return scorePoints + calculateAdvancerBonus(prediction, game);
+}
+
+function calculatePredictionScorePoints(prediction, game) {
   const gameStatus = normalizeGameStatusForScoring(game);
   const actualHome = normalizeScore(game.HomeScore !== undefined ? game.HomeScore : game.homeScore);
   const actualAway = normalizeScore(game.AwayScore !== undefined ? game.AwayScore : game.awayScore);
@@ -1022,6 +1037,56 @@ function calculatePredictionPoints(prediction, game) {
   if (predictedAway === actualAway) points += 2;
   if (Math.abs(predictedHome - predictedAway) === Math.abs(actualHome - actualAway)) points += 1;
   return points;
+}
+
+function calculateAdvancerBonus(prediction, game) {
+  if (!isKnockoutGameForScoring(game)) return 0;
+  const predictedAdvancer = normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam);
+  const actualAdvancer = getActualAdvancingTeam(game);
+  return predictedAdvancer && actualAdvancer && predictedAdvancer === actualAdvancer ? 2 : 0;
+}
+
+function getStageIdForScoring(game) {
+  const stage = String(game.Stage || game.stage || "").toUpperCase();
+  if (stage) return stage;
+  const stageKey = String(game.StageKey || game.stageKey || "").toUpperCase();
+  return stageKey.startsWith("GROUP-") ? "GROUP" : stageKey;
+}
+
+function isKnockoutGameForScoring(game) {
+  const stage = getStageIdForScoring(game);
+  return !!stage && stage !== "GROUP";
+}
+
+function normalizePredictedAdvancingTeam(value) {
+  const normalized = String(value || "").toLowerCase();
+  return normalized === "home" || normalized === "away" ? normalized : null;
+}
+
+function normalizeAdvancingTeam(value, game) {
+  const normalized = normalizePredictedAdvancingTeam(value);
+  if (normalized) return normalized;
+
+  const raw = String(value || "").trim().toLowerCase();
+  const homeName = String(game.HomeTeam || game.homeTeam || "").trim().toLowerCase();
+  const awayName = String(game.AwayTeam || game.awayTeam || "").trim().toLowerCase();
+  if (raw && raw === homeName) return "home";
+  if (raw && raw === awayName) return "away";
+  return null;
+}
+
+function getActualAdvancingTeam(game) {
+  if (!isKnockoutGameForScoring(game)) return null;
+
+  const explicit = normalizeAdvancingTeam(game.advancingTeam || game.AdvancingTeam, game);
+  if (explicit) return explicit;
+
+  const actualHome = normalizeScore(game.HomeScore !== undefined ? game.HomeScore : game.homeScore);
+  const actualAway = normalizeScore(game.AwayScore !== undefined ? game.AwayScore : game.awayScore);
+  if (actualHome === null || actualAway === null || actualHome === actualAway) {
+    return null;
+  }
+  return actualHome > actualAway ? "home" : "away";
 }
 
 function normalizeScore(value) {

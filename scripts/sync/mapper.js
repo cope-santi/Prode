@@ -45,7 +45,16 @@ function mapEventToGame(event) {
 
 function mapSportsDbStatus(rawStatus) {
   const status = String(rawStatus || "").toLowerCase();
-  if (status.includes("finished") || status === "ft") return "FINISHED";
+  if (
+    status.includes("finished") ||
+    status.includes("after extra time") ||
+    status.includes("after penalty") ||
+    status === "ft" ||
+    status === "aet" ||
+    status === "pen"
+  ) {
+    return "FINISHED";
+  }
   return "SCHEDULED";
 }
 

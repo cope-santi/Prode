@@ -164,6 +164,14 @@
                         </div>
                     </div>
 
+                    <div class="form-group mb-3">
+                        <label for="adminAdvancingTeam">Clasificado (eliminatorias):</label>
+                        <select id="adminAdvancingTeam" class="form-control">
+                            <option value="">Automatico por marcador</option>
+                        </select>
+                        <small class="form-text text-muted">Solo hace falta elegirlo si el partido empata y se define por penales.</small>
+                    </div>
+
                     <div class="text-center">
                         <button id="addGameButton" type="button" class="btn btn-primary-custom btn-lg">Agregar partido</button>
                     </div>
@@ -216,7 +224,7 @@
         import { initFirebase } from "./js/firebase-config.js?v=opt1";
         import { ADMIN_UID } from "./js/app-config.js?v=edmonton-time-1";
         // Import admin panel module
-        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js?v=edmonton-time-1";
+        import { initializeAdminPanel, toggleAdminForm, populateAdminDropdowns, populateTeamDatalist, populateAdminGameSelect } from "./js/admin-panel.js?v=knockout-advancer-1";
         import { TOURNAMENT_CONFIG } from "./js/tournament-config.js?v=edmonton-time-1";
 
         mountNavbar({ activeKey: "admin" });

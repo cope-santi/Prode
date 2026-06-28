@@ -19,14 +19,15 @@ import { buildStageKey } from './tournament-config.js?v=edmonton-time-1';
  * 
  * @param {Object} prediction - Prediction object with predictedHomeScore, predictedAwayScore
  * @param {Object} game - Game object with status, HomeScore, AwayScore
- * @returns {number|null} Points earned (0-10) or null if game not finished
+ * @returns {number|null} Points earned or null if game not finished
  * 
  * Scoring Rules:
  * - Correct Winner/Draw: +5 points
  * - Correct Home Score: +2 points
  * - Correct Away Score: +2 points
  * - Correct Goal Difference (abs): +1 point
- * Maximum: 10 points
+ * - Knockout advancing team: +2 points
+ * Maximum: 10 points in group stage, 12 points in knockout matches
  */
 function normalizeGameStatus(game) {
   const rawStatus = game.status !== undefined && game.status !== null ? game.status : game.Status;
@@ -36,7 +37,48 @@ function normalizeGameStatus(game) {
   return normalized;
 }
 
-function calculatePoints(prediction, game) {
+function getStageId(game) {
+  const stage = String(game.Stage || game.stage || '').toUpperCase();
+  if (stage) return stage;
+  const stageKey = String(game.StageKey || game.stageKey || '').toUpperCase();
+  return stageKey.startsWith('GROUP-') ? 'GROUP' : stageKey;
+}
+
+function isKnockoutGame(game) {
+  const stage = getStageId(game);
+  return stage && stage !== 'GROUP';
+}
+
+function normalizeAdvancingTeam(value, game) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'home' || raw === 'away') return raw;
+
+  const homeName = String(game.HomeTeam || game.homeTeam || '').trim().toLowerCase();
+  const awayName = String(game.AwayTeam || game.awayTeam || '').trim().toLowerCase();
+  if (raw && raw === homeName) return 'home';
+  if (raw && raw === awayName) return 'away';
+  return null;
+}
+
+function getActualAdvancingTeam(game) {
+  const explicit = normalizeAdvancingTeam(game.advancingTeam || game.AdvancingTeam, game);
+  if (explicit) return explicit;
+
+  const homeScore = game.homeScore !== undefined ? game.homeScore : game.HomeScore;
+  const awayScore = game.awayScore !== undefined ? game.awayScore : game.AwayScore;
+  if (homeScore === null || homeScore === undefined || awayScore === null || awayScore === undefined) {
+    return null;
+  }
+  const actualHome = Number(homeScore);
+  const actualAway = Number(awayScore);
+
+  if (!Number.isFinite(actualHome) || !Number.isFinite(actualAway) || actualHome === actualAway) {
+    return null;
+  }
+  return actualHome > actualAway ? 'home' : 'away';
+}
+
+function calculateScorePoints(prediction, game) {
   // Normalize game object to handle both uppercase and lowercase properties
   const gameStatus = normalizeGameStatus(game);
   const homeScore = game.homeScore !== undefined ? game.homeScore : game.HomeScore;
@@ -99,6 +141,19 @@ function calculatePoints(prediction, game) {
   return points;
 }
 
+function calculateAdvancerBonus(prediction, game) {
+  if (!isKnockoutGame(game)) return 0;
+  const predictedAdvancer = normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
+  const actualAdvancer = getActualAdvancingTeam(game);
+  return predictedAdvancer && actualAdvancer && predictedAdvancer === actualAdvancer ? 2 : 0;
+}
+
+function calculatePoints(prediction, game) {
+  const scorePoints = calculateScorePoints(prediction, game);
+  if (scorePoints === null) return null;
+  return scorePoints + calculateAdvancerBonus(prediction, game);
+}
+
 /**
  * Calculates all player statistics from predictions and games
  * Properly handles phase wins by comparing all players' scores per phase
@@ -146,17 +201,23 @@ function calculatePlayerStats(games, predictions) {
       const normalizedGame = {
         Status: normalizeGameStatus(game),
         homeScore: game.HomeScore !== undefined ? game.HomeScore : game.homeScore,
-        awayScore: game.AwayScore !== undefined ? game.AwayScore : game.awayScore
+        awayScore: game.AwayScore !== undefined ? game.AwayScore : game.awayScore,
+        HomeTeam: game.HomeTeam || game.homeTeam,
+        AwayTeam: game.AwayTeam || game.awayTeam,
+        Stage: game.Stage || game.stage,
+        StageKey: game.StageKey || game.stageKey,
+        advancingTeam: game.advancingTeam || game.AdvancingTeam
       };
 
       const points = calculatePoints(pred, normalizedGame);
+      const scorePoints = calculateScorePoints(pred, normalizedGame);
 
       if (points !== null) {
         playerStats[userId].totalPoints += points;
         playerStats[userId].gamesParticipated += 1;
 
         // Track perfect scores
-        if (points === 10) {
+        if (scorePoints === 10) {
           playerStats[userId].perfectScoresCount += 1;
         }
 
@@ -240,7 +301,12 @@ function aggregatePredictionsByPlayer(games, predictions) {
       id: game.id,
       Status: normalizeGameStatus(game),
       homeScore: game.homeScore !== undefined ? game.homeScore : game.HomeScore,
-      awayScore: game.awayScore !== undefined ? game.awayScore : game.AwayScore
+      awayScore: game.awayScore !== undefined ? game.awayScore : game.AwayScore,
+      HomeTeam: game.HomeTeam || game.homeTeam,
+      AwayTeam: game.AwayTeam || game.awayTeam,
+      Stage: game.Stage || game.stage,
+      StageKey: game.StageKey || game.stageKey,
+      advancingTeam: game.advancingTeam || game.AdvancingTeam
     };
     gameMap[game.id] = normalized;
     gameIds.add(game.id);
@@ -331,12 +397,12 @@ function sortPlayersByStats(playerStats, predictions) {
 /**
  * Gets score classification for UI coloring
  * 
- * @param {number} points - Points earned (0-10)
+ * @param {number} points - Points earned
  * @returns {string} Classification: 'perfect', 'high', 'medium', 'low', 'zero', 'pending'
  */
 function getScoreClass(points) {
   if (points === null || points === undefined) return 'pending';
-  if (points === 10) return 'perfect';
+  if (points >= 10) return 'perfect';
   if (points >= 7) return 'high';
   if (points >= 4) return 'medium';
   if (points >= 1) return 'low';
@@ -369,6 +435,7 @@ function normalizeGame(firestoreGame) {
     group: firestoreGame.Group,
     matchday: firestoreGame.Matchday,
     stageKey: firestoreGame.StageKey,
+    advancingTeam: firestoreGame.advancingTeam || firestoreGame.AdvancingTeam || null,
     // Keep original fields for backward compatibility
     HomeTeam: firestoreGame.HomeTeam,
     AwayTeam: firestoreGame.AwayTeam,
@@ -379,7 +446,8 @@ function normalizeGame(firestoreGame) {
     Stage: firestoreGame.Stage,
     Group: firestoreGame.Group,
     Matchday: firestoreGame.Matchday,
-    StageKey: firestoreGame.StageKey
+    StageKey: firestoreGame.StageKey,
+    AdvancingTeam: firestoreGame.AdvancingTeam
   };
 }
 
@@ -404,6 +472,7 @@ function normalizePrediction(firestorePrediction) {
     gameId: firestorePrediction.gameId,
     predictedHomeScore: Number.isFinite(normalizedHomeScore) ? normalizedHomeScore : null,
     predictedAwayScore: Number.isFinite(normalizedAwayScore) ? normalizedAwayScore : null,
+    predictedAdvancingTeam: firestorePrediction.predictedAdvancingTeam || null,
     timestamp: firestorePrediction.timestamp?.toDate?.()
       ? firestorePrediction.timestamp.toDate()
       : new Date(firestorePrediction.timestamp)
