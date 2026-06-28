@@ -1098,7 +1098,7 @@ function getPredictedAdvancingTeam(prediction, game) {
   }
 
   if (predictedHome !== predictedAway) {
-    return predictedHome > predictedAway ? "home" : "away";
+    return null;
   }
 
   return normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
