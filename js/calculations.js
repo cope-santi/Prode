@@ -79,15 +79,18 @@ function getActualAdvancingTeam(game) {
 }
 
 function getPredictedAdvancingTeam(prediction, game) {
-  const explicit = normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
-  if (explicit) return explicit;
-
   const predictedHome = Number(prediction.predictedHomeScore);
   const predictedAway = Number(prediction.predictedAwayScore);
-  if (!Number.isFinite(predictedHome) || !Number.isFinite(predictedAway) || predictedHome === predictedAway) {
+
+  if (!Number.isFinite(predictedHome) || !Number.isFinite(predictedAway)) {
     return null;
   }
-  return predictedHome > predictedAway ? 'home' : 'away';
+
+  if (predictedHome !== predictedAway) {
+    return predictedHome > predictedAway ? 'home' : 'away';
+  }
+
+  return normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
 }
 
 function calculateScorePoints(prediction, game) {
