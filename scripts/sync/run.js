@@ -823,7 +823,7 @@ async function updatePublicCache(db, config, syncedAt) {
         playerName: prediction.playerName || "Anónimo",
         predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
         predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
-        predictedAdvancingTeam: normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam),
+        predictedAdvancingTeam: getPredictedAdvancingTeam(prediction, game),
         points: publicStatus === "finished" ? calculatePredictionPoints(prediction, game) : null
       }));
 
@@ -882,7 +882,7 @@ async function updateStartedPublicResults(db, config, syncedAt, games) {
         playerName: prediction.playerName || "Anónimo",
         predictedHomeScore: normalizeScore(prediction.predictedHomeScore),
         predictedAwayScore: normalizeScore(prediction.predictedAwayScore),
-        predictedAdvancingTeam: normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam),
+        predictedAdvancingTeam: getPredictedAdvancingTeam(prediction, game),
         points: null
       });
     });
@@ -1041,7 +1041,7 @@ function calculatePredictionScorePoints(prediction, game) {
 
 function calculateAdvancerBonus(prediction, game) {
   if (!isKnockoutGameForScoring(game)) return 0;
-  const predictedAdvancer = normalizePredictedAdvancingTeam(prediction.predictedAdvancingTeam);
+  const predictedAdvancer = getPredictedAdvancingTeam(prediction, game);
   const actualAdvancer = getActualAdvancingTeam(game);
   return predictedAdvancer && actualAdvancer && predictedAdvancer === actualAdvancer ? 2 : 0;
 }
@@ -1087,6 +1087,18 @@ function getActualAdvancingTeam(game) {
     return null;
   }
   return actualHome > actualAway ? "home" : "away";
+}
+
+function getPredictedAdvancingTeam(prediction, game) {
+  const explicit = normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
+  if (explicit) return explicit;
+
+  const predictedHome = normalizeScore(prediction.predictedHomeScore);
+  const predictedAway = normalizeScore(prediction.predictedAwayScore);
+  if (predictedHome === null || predictedAway === null || predictedHome === predictedAway) {
+    return null;
+  }
+  return predictedHome > predictedAway ? "home" : "away";
 }
 
 function normalizeScore(value) {

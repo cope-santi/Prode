@@ -78,6 +78,18 @@ function getActualAdvancingTeam(game) {
   return actualHome > actualAway ? 'home' : 'away';
 }
 
+function getPredictedAdvancingTeam(prediction, game) {
+  const explicit = normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
+  if (explicit) return explicit;
+
+  const predictedHome = Number(prediction.predictedHomeScore);
+  const predictedAway = Number(prediction.predictedAwayScore);
+  if (!Number.isFinite(predictedHome) || !Number.isFinite(predictedAway) || predictedHome === predictedAway) {
+    return null;
+  }
+  return predictedHome > predictedAway ? 'home' : 'away';
+}
+
 function calculateScorePoints(prediction, game) {
   // Normalize game object to handle both uppercase and lowercase properties
   const gameStatus = normalizeGameStatus(game);
@@ -143,7 +155,7 @@ function calculateScorePoints(prediction, game) {
 
 function calculateAdvancerBonus(prediction, game) {
   if (!isKnockoutGame(game)) return 0;
-  const predictedAdvancer = normalizeAdvancingTeam(prediction.predictedAdvancingTeam, game);
+  const predictedAdvancer = getPredictedAdvancingTeam(prediction, game);
   const actualAdvancer = getActualAdvancingTeam(game);
   return predictedAdvancer && actualAdvancer && predictedAdvancer === actualAdvancer ? 2 : 0;
 }

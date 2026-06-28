@@ -72,7 +72,10 @@ function updateAdvancingTeamOptions(selectedValue) {
     const stage = adminStageSelect ? adminStageSelect.value : '';
     const homeTeam = adminHomeTeamInput ? adminHomeTeamInput.value.trim() : '';
     const awayTeam = adminAwayTeamInput ? adminAwayTeamInput.value.trim() : '';
-    const enabled = isKnockoutStage(stage) && homeTeam && awayTeam;
+    const homeScore = adminHomeScoreInput ? parseOptionalNumber(adminHomeScoreInput.value) : null;
+    const awayScore = adminAwayScoreInput ? parseOptionalNumber(adminAwayScoreInput.value) : null;
+    const scoresAreDraw = Number.isFinite(homeScore) && Number.isFinite(awayScore) && homeScore === awayScore;
+    const enabled = isKnockoutStage(stage) && homeTeam && awayTeam && scoresAreDraw;
     const valueToKeep = selectedValue !== undefined ? selectedValue : adminAdvancingTeamSelect.value;
 
     adminAdvancingTeamSelect.innerHTML = '';
@@ -151,6 +154,9 @@ export function initializeAdminPanel(database, addDoc, collection, updateDoc, do
     }
     if (adminHomeTeamInput) adminHomeTeamInput.addEventListener('input', updateAdvancingTeamOptions);
     if (adminAwayTeamInput) adminAwayTeamInput.addEventListener('input', updateAdvancingTeamOptions);
+    if (adminHomeScoreInput) adminHomeScoreInput.addEventListener('input', updateAdvancingTeamOptions);
+    if (adminAwayScoreInput) adminAwayScoreInput.addEventListener('input', updateAdvancingTeamOptions);
+    if (adminStatusSelect) adminStatusSelect.addEventListener('change', updateAdvancingTeamOptions);
     updateAdvancingTeamOptions();
 }
 
