@@ -1,6 +1,9 @@
-name: Post Match Sync
+name: Sync Watchdog
 
 on:
+  schedule:
+    # Offset from crowded :00/:10 minutes; the job itself gates Firebase access.
+    - cron: "9,19,29,39,49,59 * * * *"
   workflow_dispatch: {}
 
 concurrency:
