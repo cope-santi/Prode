@@ -531,7 +531,7 @@ function buildPayload(mapped, config, now, isCreate) {
     payload.score = mapped.score;
     payload.HomeScore = mapped.HomeScore;
     payload.AwayScore = mapped.AwayScore;
-    payload.advancingTeam = getActualAdvancingTeam(payload);
+    payload.advancingTeam = mapped.advancingTeam || getActualAdvancingTeam(payload);
   } else {
     payload.score = null;
     payload.HomeScore = null;

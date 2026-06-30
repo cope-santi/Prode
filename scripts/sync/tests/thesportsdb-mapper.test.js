@@ -92,6 +92,23 @@ const mappedPenalties = mapEventToGame(penaltiesEvent);
 assert.equal(mappedPenalties.status, "finished");
 assert.equal(mappedPenalties.providerStatus, "FINISHED");
 
+const afterPenaltiesEvent = {
+  ...r32Event,
+  idEvent: "792",
+  strStatus: "AP",
+  strResult: "Japan win 4-3 on penalties",
+  intHomeScore: "1",
+  intAwayScore: "1",
+  intHomeScoreExtra: "3",
+  intAwayScoreExtra: "4"
+};
+const mappedAfterPenalties = mapEventToGame(afterPenaltiesEvent);
+assert.equal(mappedAfterPenalties.status, "finished");
+assert.equal(mappedAfterPenalties.providerStatus, "FINISHED");
+assert.equal(mappedAfterPenalties.HomeScore, 1);
+assert.equal(mappedAfterPenalties.AwayScore, 1);
+assert.equal(mappedAfterPenalties.advancingTeam, "away");
+
 const invalidGroupEvent = {
   idEvent: "999",
   strHomeTeam: "Spain",

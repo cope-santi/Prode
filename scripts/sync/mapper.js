@@ -13,6 +13,7 @@ function mapEventToGame(event) {
   const providerStatus = mapSportsDbStatus(event.strStatus);
   const status = providerStatus === "FINISHED" ? "finished" : "upcoming";
   const score = status === "finished" ? buildScore(event) : null;
+  const advancingTeam = status === "finished" ? extractAdvancingTeam(event) : null;
   const roundText = event.strRound || event.strEvent;
   let stage = mapRoundToStage(roundText, event.intRound);
   const rawGroup = extractGroup(event.strGroup || roundText);
@@ -36,6 +37,7 @@ function mapEventToGame(event) {
     KickOffTime: utcDate,
     HomeScore: score ? score.home : null,
     AwayScore: score ? score.away : null,
+    advancingTeam,
     Stage: stage,
     Group: group,
     Matchday: matchday,
@@ -51,7 +53,8 @@ function mapSportsDbStatus(rawStatus) {
     status.includes("after penalty") ||
     status === "ft" ||
     status === "aet" ||
-    status === "pen"
+    status === "pen" ||
+    status === "ap"
   ) {
     return "FINISHED";
   }
@@ -77,6 +80,51 @@ function parseScore(value) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = parseInt(value, 10);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function extractAdvancingTeam(event) {
+  const homeScore = parseScore(event.intHomeScore);
+  const awayScore = parseScore(event.intAwayScore);
+  if (homeScore !== null && awayScore !== null && homeScore !== awayScore) {
+    return homeScore > awayScore ? "home" : "away";
+  }
+
+  const status = String(event.strStatus || "").trim().toLowerCase();
+  const result = String(event.strResult || "").trim().toLowerCase();
+  const isPenaltyResult = status === "ap" || status === "pen" || result.includes("penalt");
+  const homeExtra = parseScore(event.intHomeScoreExtra);
+  const awayExtra = parseScore(event.intAwayScoreExtra);
+  if (isPenaltyResult && homeExtra !== null && awayExtra !== null && homeExtra !== awayExtra) {
+    return homeExtra > awayExtra ? "home" : "away";
+  }
+
+  const homeTeam = normalizeResultTeam(event.strHomeTeam);
+  const awayTeam = normalizeResultTeam(event.strAwayTeam);
+  const normalizedResult = normalizeResultTeam(result);
+  if (teamWonResult(normalizedResult, homeTeam)) return "home";
+  if (teamWonResult(normalizedResult, awayTeam)) return "away";
+
+  return null;
+}
+
+function teamWonResult(result, team) {
+  if (!result || !team) return false;
+  return (
+    result.startsWith(`${team} win`) ||
+    result.startsWith(`${team} wins`) ||
+    result.startsWith(`${team} won`) ||
+    result.startsWith(`${team} advance`) ||
+    result.startsWith(`${team} advanced`)
+  );
+}
+
+function normalizeResultTeam(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function mapRoundToStage(text, roundNumber) {
