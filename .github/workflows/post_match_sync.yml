@@ -7,6 +7,14 @@ on:
     # 10/40 minutes after expected full time to apply points,
     # and repeats at 20/50 as a retry when GitHub schedule is delayed.
     - cron: "5,10,20,35,40,50 0-6,16-23 11-28 6 *"
+    # Round of 32 sweep. Times are UTC and intentionally narrower than
+    # every-10-minutes polling so Firestore reads stay under control.
+    - cron: "5,10,35,40 17,19,20,22,23 29 6 *"
+    - cron: "5,10,35,40 1,3,17,19,21,23 30 6 *"
+    - cron: "5,10,35,40 1,3,16,18,20,22 1 7 *"
+    - cron: "5,10,35,40 0,2,19,21,23 2 7 *"
+    - cron: "5,10,35,40 1,3,5,18,20,22 3 7 *"
+    - cron: "5,10,35,40 0,1,3,4 4 7 *"
   workflow_dispatch: {}
 
 concurrency:
