@@ -4,7 +4,7 @@ on:
   schedule:
     # Keep the cron itself simple so GitHub reliably schedules it.
     # The first job step decides whether this is a tournament sync window.
-    - cron: "*/10 * * * *"
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch: {}
 
 concurrency:
