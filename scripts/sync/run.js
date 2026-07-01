@@ -531,7 +531,9 @@ function buildPayload(mapped, config, now, isCreate) {
     payload.score = mapped.score;
     payload.HomeScore = mapped.HomeScore;
     payload.AwayScore = mapped.AwayScore;
-    payload.advancingTeam = mapped.advancingTeam || getActualAdvancingTeam(payload);
+    payload.advancingTeam = isKnockoutGameForScoring(payload)
+      ? mapped.advancingTeam || getActualAdvancingTeam(payload)
+      : null;
   } else {
     payload.score = null;
     payload.HomeScore = null;
@@ -649,14 +651,33 @@ function hasChanges(payload, existingData) {
 function normalizeValue(value) {
   if (value === undefined) return "undefined";
   if (value === null) return "null";
+  if (value && typeof value.toMillis === "function") return String(value.toMillis());
   if (typeof value === "object") {
     try {
-      return JSON.stringify(value);
+      return JSON.stringify(sortObjectForComparison(value));
     } catch (error) {
       return String(value);
     }
   }
   return String(value);
+}
+
+function sortObjectForComparison(value) {
+  if (Array.isArray(value)) {
+    return value.map(sortObjectForComparison);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+  return Object.keys(value)
+    .sort()
+    .reduce((acc, key) => {
+      acc[key] = sortObjectForComparison(value[key]);
+      return acc;
+    }, {});
 }
 
 function buildMatchKey(homeTeam, awayTeam, utcDate) {

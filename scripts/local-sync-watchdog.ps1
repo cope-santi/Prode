@@ -7,13 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $GitHubCli = (Get-Command gh -ErrorAction Stop).Source
+$NodeCli = (Get-Command node -ErrorAction Stop).Source
 
 function Test-SyncWindow {
-  $now = (Get-Date).ToUniversalTime()
-  $isUsefulHour = ($now.Hour -ge 0 -and $now.Hour -le 6) -or ($now.Hour -ge 16 -and $now.Hour -le 23)
-  $isGroupStage = $now.Month -eq 6 -and $now.Day -ge 11 -and $now.Day -le 28
-  $isKnockoutStage = ($now.Month -eq 6 -and $now.Day -ge 29 -and $now.Day -le 30) -or ($now.Month -eq 7 -and $now.Day -ge 1 -and $now.Day -le 19)
-  return $isUsefulHour -and ($isGroupStage -or $isKnockoutStage)
+  & $NodeCli "$RepoPath\scripts\sync-window.js" --quiet --scheduled-only
+  return $LASTEXITCODE -eq 0
 }
 
 function Test-RecentRun {

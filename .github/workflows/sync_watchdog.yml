@@ -15,26 +15,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
       - name: Check sync window
         id: sync-window
         shell: bash
         run: |
-          node <<'NODE'
-          const now = new Date();
-          const month = now.getUTCMonth() + 1;
-          const day = now.getUTCDate();
-          const hour = now.getUTCHours();
-          const isUsefulHour = (hour >= 0 && hour <= 6) || (hour >= 16 && hour <= 23);
-          const isGroupStage = month === 6 && day >= 11 && day <= 28;
-          const isKnockoutStage = (month === 6 && day >= 29 && day <= 30) || (month === 7 && day >= 1 && day <= 19);
-          const shouldRun = process.env.GITHUB_EVENT_NAME === "workflow_dispatch" || (isUsefulHour && (isGroupStage || isKnockoutStage));
-          require("node:fs").appendFileSync(process.env.GITHUB_OUTPUT, `should_run=${shouldRun}\n`);
-          console.log(`UTC ${now.toISOString()} should_run=${shouldRun}`);
-          NODE
-
-      - name: Checkout
-        if: steps.sync-window.outputs.should_run == 'true'
-        uses: actions/checkout@v6.0.2
+          node scripts/sync-window.js --github-output || test $? -eq 2
 
       - name: Setup Node
         if: steps.sync-window.outputs.should_run == 'true'
